@@ -1,0 +1,3 @@
+[submodule "submodules/jpeg-xl"]
+	path = submodules/jpeg-xl
+	url = https://github.com/saschanaz/jpeg-xl.git
