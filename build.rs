@@ -14,7 +14,8 @@ fn submodule_update() {
 }
 
 fn run_cmake() {
-    let clang = if cfg!(windows) {
+    let target = env::var("TARGET").unwrap();
+    let clang = if target.contains("msvc") {
         ("clang-cl", "clang-cl")
     } else {
         ("clang", "clang++")
