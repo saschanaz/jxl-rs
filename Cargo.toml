@@ -1,7 +1,10 @@
 [package]
-name = "libjxl-sys"
+name = "libjxl-src"
 version = "0.1.0"
 authors = ["Kagami Sascha Rosylight <saschanaz@outlook.com>"]
+license = "ISC"
+keywords = ["libjxl", "jxl", "JPEG XL"]
+categories = ["multimedia::images"]
 edition = "2018"
 build = "build.rs"
 
@@ -11,4 +14,3 @@ build = "build.rs"
 
 [build-dependencies]
 cmake = "0.1.45"
-bindgen = "0.56.0"
