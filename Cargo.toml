@@ -1,10 +1,12 @@
 [package]
 name = "libjxl-src"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Kagami Sascha Rosylight <saschanaz@outlook.com>"]
 license = "ISC"
 keywords = ["libjxl", "jxl", "JPEG XL"]
 categories = ["multimedia::images"]
+description = "Provides a vendored libjxl."
+repository = "https://github.com/saschanaz/libjxl-src"
 edition = "2018"
 build = "build.rs"
 
