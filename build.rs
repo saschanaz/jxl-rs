@@ -2,18 +2,19 @@ use std::env;
 use cmake::Config;
 
 fn run_cmake() {
-    let target = env::var("TARGET").unwrap();
-    let clang = if target.contains("msvc") {
-        // MSVC is not supported, force clang
-        ("clang-cl", "clang-cl")
-    } else {
-        ("clang", "clang++")
-    };
+    let mut config = Config::new("submodules/jpeg-xl");
 
-    Config::new("submodules/jpeg-xl")
-        .define("CMAKE_C_COMPILER", clang.0)
-        .define("CMAKE_CXX_COMPILER", clang.1)
-        .generator("Ninja")
+    let target = env::var("TARGET").unwrap();
+    if target.contains("msvc") {
+        config
+            // MSVC is not supported, force clang
+            .define("CMAKE_C_COMPILER", "clang-cl")
+            .define("CMAKE_CXX_COMPILER", "clang-cl")
+            // Force Ninja or VS will ignore CMAKE_*_COMPILER
+            .generator("Ninja");
+    }
+
+    config
         .define("JPEGXL_STATIC", "ON")
         .define("BUILD_TESTING", "OFF")
         .build();
