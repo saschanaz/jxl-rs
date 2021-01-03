@@ -1,14 +1,5 @@
 use std::env;
-use std::process::Command;
 use cmake::Config;
-
-fn submodule_update() {
-    // --recursive because jpeg-xl also has its own submodules
-    Command::new("git")
-        .args(&["submodule", "update", "--init", "--recursive"])
-        .output()
-        .expect("Failed to update submodules");
-}
 
 fn run_cmake() {
     let target = env::var("TARGET").unwrap();
@@ -30,6 +21,5 @@ fn run_cmake() {
 
 fn main() {
     // TODO: Add libgif/libjpeg/libpng/zlib
-    submodule_update();
     run_cmake();
 }
