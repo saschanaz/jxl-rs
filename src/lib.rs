@@ -23,17 +23,14 @@ pub fn print_cargo_link() {
     if cfg!(windows) {
         println!("cargo:rustc-link-lib=static=jxl-static");
         println!("cargo:rustc-link-lib=static=jxl_threads-static");
-        println!("cargo:rustc-link-lib=static=brotlicommon-static");
-        println!("cargo:rustc-link-lib=static=brotlidec-static");
-        println!("cargo:rustc-link-lib=static=brotlienc-static");
     } else {
         // -static postfix is stripped by `NOT WIN32` gate in build script
         println!("cargo:rustc-link-lib=static=jxl");
         println!("cargo:rustc-link-lib=static=jxl_threads");
-        println!("cargo:rustc-link-lib=static=brotlicommon");
-        println!("cargo:rustc-link-lib=static=brotlidec");
-        println!("cargo:rustc-link-lib=static=brotlienc");
     }
+    println!("cargo:rustc-link-lib=static=brotlicommon-static");
+    println!("cargo:rustc-link-lib=static=brotlidec-static");
+    println!("cargo:rustc-link-lib=static=brotlienc-static");
     println!("cargo:rustc-link-lib=static=hwy");
     println!("cargo:rustc-link-lib=static=skcms");
 }
