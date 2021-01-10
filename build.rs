@@ -3,6 +3,8 @@ use cmake::Config;
 
 fn run_cmake() {
     let mut config = Config::new("submodules/jpeg-xl");
+    config.define("JPEGXL_ENABLE_OPENEXR", "OFF");
+    config.define("JPEGXL_ENABLE_BENCHMARK", "OFF");
 
     let target = env::var("TARGET").unwrap();
     if target.contains("msvc") {
