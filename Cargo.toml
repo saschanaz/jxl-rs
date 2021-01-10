@@ -1,38 +1,5 @@
-[package]
-name = "libjxl-src"
-version = "0.2.5"
-authors = ["Kagami Sascha Rosylight <saschanaz@outlook.com>"]
-license = "ISC"
-keywords = ["libjxl", "jxl", "jpegxl"]
-categories = ["multimedia::images"]
-description = "Provides a vendored libjxl."
-repository = "https://github.com/saschanaz/libjxl-src"
-edition = "2018"
-build = "build.rs"
-exclude = [
-  "submodules/jpeg-xl/third_party/brotli/csharp",
-  "submodules/jpeg-xl/third_party/brotli/docs",
-  "submodules/jpeg-xl/third_party/brotli/fetch-spec",
-  "submodules/jpeg-xl/third_party/brotli/go",
-  "submodules/jpeg-xl/third_party/brotli/java",
-  "submodules/jpeg-xl/third_party/brotli/js",
-  "submodules/jpeg-xl/third_party/brotli/python",
-  "submodules/jpeg-xl/third_party/brotli/research",
-  "submodules/jpeg-xl/third_party/brotli/tests",
-  "submodules/jpeg-xl/third_party/difftest_ng",
-  "submodules/jpeg-xl/third_party/googletest",
-  "submodules/jpeg-xl/third_party/highway/g3doc",
-  "submodules/jpeg-xl/third_party/IQA-optimization",
-  "submodules/jpeg-xl/third_party/lcms",
-  "submodules/jpeg-xl/third_party/skcms/profiles",
-  "submodules/jpeg-xl/third_party/sjpeg/tests",
-  "submodules/jpeg-xl/third_party/testdata",
-  "submodules/jpeg-xl/third_party/vmaf",
+[workspace]
+members = [
+    "libjxl-src",
+    "libjxl-sys",
 ]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-
-[build-dependencies]
-cmake = "0.1.45"

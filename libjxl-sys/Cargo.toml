@@ -1,0 +1,16 @@
+[package]
+authors = ["Kagami Sascha Rosylight <saschanaz@outlook.com>"]
+description = "Rust wrapper for JPEG XL reference implementation"
+edition = "2018"
+license = "GPL-3.0-or-later"
+name = "libjxl-sys"
+readme = "README.md"
+repository = "https://github.com/saschanaz/libjxl-sys"
+version = "0.2.0"
+links = "jxl"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+bindgen = "0.56"
+libjxl-src = { version = "0.2.5", path = "../libjxl-src" }
