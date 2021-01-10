@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
+        with:
+          submodule: true
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -30,6 +32,8 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
+        with:
+          submodule: true
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -65,6 +69,8 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
+        with:
+          submodule: true
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
