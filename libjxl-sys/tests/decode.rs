@@ -135,7 +135,7 @@ unsafe fn decode_oneshot(data: Vec<u8>) -> Result<(JxlBasicInfo, Vec<u8>, Vec<u8
         dec,
         JxlDecoderStatus_JXL_DEC_BASIC_INFO
             | JxlDecoderStatus_JXL_DEC_COLOR_ENCODING
-            | JxlDecoderStatus_JXL_DEC_FULL_IMAGE
+            | JxlDecoderStatus_JXL_DEC_FULL_IMAGE as i32
     ));
 
     let result = decode_loop(dec, data);
