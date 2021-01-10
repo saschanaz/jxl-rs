@@ -20,7 +20,8 @@ fn main() {
         // bindings for.
         .header("wrapper.h")
         // Tell where to find the jxl/ headers.
-        .clang_arg("-I").clang_arg(include_dir)
+        .clang_arg("-I")
+        .clang_arg(include_dir)
         // Reduce noise from system libs.
         .whitelist_function("Jxl.*")
         // #[derive(Default)] for struct initialization.

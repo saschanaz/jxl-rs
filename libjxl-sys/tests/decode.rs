@@ -115,7 +115,7 @@ unsafe fn decode_loop(
             }
             JxlDecoderStatus_JXL_DEC_SUCCESS => {
                 // All decoding successfully finished.
-                return Ok((basic_info, pixels_buffer, icc_profile))
+                return Ok((basic_info, pixels_buffer, icc_profile));
             }
             _ => return Err("Unknown decoder status"),
         }
