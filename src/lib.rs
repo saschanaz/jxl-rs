@@ -24,6 +24,7 @@ pub fn print_cargo_link() {
         println!("cargo:rustc-link-lib=static=jxl-static");
         println!("cargo:rustc-link-lib=static=jxl_threads-static");
     } else {
+        println!("cargo:rustc-link-lib=dylib=stdc++");
         // -static postfix is stripped by `NOT WIN32` gate in build script
         println!("cargo:rustc-link-lib=static=jxl");
         println!("cargo:rustc-link-lib=static=jxl_threads");
