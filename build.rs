@@ -1,5 +1,5 @@
-use std::env;
 use cmake::Config;
+use std::env;
 
 fn run_cmake() {
     let mut config = Config::new("submodules/jpeg-xl");
