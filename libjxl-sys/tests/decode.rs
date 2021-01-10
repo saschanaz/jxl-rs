@@ -138,6 +138,13 @@ unsafe fn decode_oneshot(data: Vec<u8>) -> Result<(JxlBasicInfo, Vec<u8>, Vec<u8
 
     let dec = JxlDecoderCreate(std::ptr::null());
 
+    if JxlDecoderStatus_JXL_DEC_SUCCESS
+        != JxlDecoderSetParallelRunner(dec, Some(JxlThreadParallelRunner), runner)
+    {
+        JxlThreadParallelRunnerDestroy(runner);
+        JxlDecoderDestroy(dec);
+        return Err("JxlDecoderSubscribeEvents failed");
+    }
 
     let result = decode_loop(dec, data);
 
