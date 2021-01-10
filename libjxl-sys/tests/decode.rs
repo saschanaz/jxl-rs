@@ -53,6 +53,13 @@ unsafe fn decode_loop(
     let mut pixels_buffer: Vec<u8> = Vec::new();
     let mut icc_profile: Vec<u8> = Vec::new();
 
+    try_dec!(JxlDecoderSubscribeEvents(
+        dec,
+        (JxlDecoderStatus_JXL_DEC_BASIC_INFO
+            | JxlDecoderStatus_JXL_DEC_COLOR_ENCODING
+            | JxlDecoderStatus_JXL_DEC_FULL_IMAGE) as i32
+    ));
+
     loop {
         let status = JxlDecoderProcessInput(dec, next_in, &mut avail_in);
 
@@ -131,12 +138,6 @@ unsafe fn decode_oneshot(data: Vec<u8>) -> Result<(JxlBasicInfo, Vec<u8>, Vec<u8
 
     let dec = JxlDecoderCreate(std::ptr::null());
 
-    try_dec!(JxlDecoderSubscribeEvents(
-        dec,
-        (JxlDecoderStatus_JXL_DEC_BASIC_INFO
-            | JxlDecoderStatus_JXL_DEC_COLOR_ENCODING
-            | JxlDecoderStatus_JXL_DEC_FULL_IMAGE) as i32
-    ));
 
     let result = decode_loop(dec, data);
 
