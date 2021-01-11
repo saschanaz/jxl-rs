@@ -19,7 +19,7 @@ macro_rules! try_dec {
     }};
 }
 
-// Ported version of https://gitlab.com/wg1/jpeg-xl/-/blob/master/examples/decode_oneshot.cc
+// Ported version of https://gitlab.com/wg1/jpeg-xl/-/blob/v0.2/examples/decode_oneshot.cc
 
 // Copyright (c) the JPEG XL Project
 //
@@ -129,7 +129,7 @@ unsafe fn decode_loop(
     }
 }
 
-unsafe fn decode_oneshot(data: Vec<u8>) -> Result<(JxlBasicInfo, Vec<u8>, Vec<u8>), &'static str> {
+pub unsafe fn decode_oneshot(data: Vec<u8>) -> Result<(JxlBasicInfo, Vec<u8>, Vec<u8>), &'static str> {
     // Multi-threaded parallel runner.
     let runner = JxlThreadParallelRunnerCreate(
         std::ptr::null(),
