@@ -129,7 +129,9 @@ unsafe fn decode_loop(
     }
 }
 
-pub unsafe fn decode_oneshot(data: Vec<u8>) -> Result<(JxlBasicInfo, Vec<u8>, Vec<u8>), &'static str> {
+pub unsafe fn decode_oneshot(
+    data: Vec<u8>,
+) -> Result<(JxlBasicInfo, Vec<u8>, Vec<u8>), &'static str> {
     // Multi-threaded parallel runner.
     let runner = JxlThreadParallelRunnerCreate(
         std::ptr::null(),
