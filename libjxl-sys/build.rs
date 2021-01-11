@@ -26,6 +26,9 @@ fn main() {
         .whitelist_function("Jxl.*")
         // #[derive(Default)] for struct initialization.
         .derive_default(true)
+        // `size_t` is `usize` almost everywhere
+        // https://github.com/rust-lang/rust-bindgen/issues/1901
+        .size_t_is_usize(true)
         // Finish the builder and generate the bindings.
         .generate()
         // Unwrap the Result and panic on failure.

@@ -40,7 +40,7 @@ unsafe fn decode_loop(
     data: Vec<u8>,
 ) -> Result<(JxlBasicInfo, Vec<u8>, Vec<u8>), &'static str> {
     let next_in = &mut data.as_ptr();
-    let mut avail_in = data.len() as u64;
+    let mut avail_in = data.len();
 
     let pixel_format = JxlPixelFormat {
         num_channels: 4,
@@ -76,14 +76,14 @@ unsafe fn decode_loop(
 
             JxlDecoderStatus_JXL_DEC_COLOR_ENCODING => {
                 // Get the ICC color profile of the pixel data
-                let mut icc_size = 0u64;
+                let mut icc_size = 0usize;
                 try_dec!(JxlDecoderGetICCProfileSize(
                     dec,
                     &pixel_format,
                     JxlColorProfileTarget_JXL_COLOR_PROFILE_TARGET_DATA,
                     &mut icc_size
                 ));
-                icc_profile.resize(icc_size as usize, 0);
+                icc_profile.resize(icc_size, 0);
                 try_dec!(JxlDecoderGetColorAsICCProfile(
                     dec,
                     &pixel_format,
@@ -95,14 +95,14 @@ unsafe fn decode_loop(
 
             // Get the output buffer
             JxlDecoderStatus_JXL_DEC_NEED_IMAGE_OUT_BUFFER => {
-                let mut buffer_size: u64 = 0;
+                let mut buffer_size = 0usize;
                 try_dec!(JxlDecoderImageOutBufferSize(
                     dec,
                     &pixel_format,
                     &mut buffer_size
                 ));
 
-                if buffer_size != (basic_info.xsize * basic_info.ysize * 4) as u64 {
+                if buffer_size != (basic_info.xsize * basic_info.ysize * 4) as usize {
                     return Err("Invalid out buffer size");
                 }
 
