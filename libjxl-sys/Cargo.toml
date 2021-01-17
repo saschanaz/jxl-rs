@@ -2,7 +2,7 @@
 authors = ["Kagami Sascha Rosylight <saschanaz@outlook.com>"]
 description = "Rust bindings for libjxl, the JPEG XL reference library."
 edition = "2018"
-license = "ICS"
+license = "ISC"
 name = "libjxl-sys"
 readme = "README.md"
 repository = "https://github.com/saschanaz/jxl-rs/tree/main/libjxl-sys"
