@@ -2,4 +2,5 @@
 members = [
     "libjxl-src",
     "libjxl-sys",
+    "kagamijxl",
 ]
