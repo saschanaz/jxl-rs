@@ -1,5 +1,3 @@
-#![allow(non_upper_case_globals)]
-
 use libjxl_sys::*;
 mod decode;
 
@@ -34,13 +32,13 @@ unsafe fn encode_loop(enc: *mut JxlEncoderStruct) -> Result<Vec<u8>, &'static st
     loop {
         let process_result = JxlEncoderProcessOutput(enc, &mut next_out, &mut avail_out);
         match process_result {
-            JxlEncoderStatus_JXL_ENC_NEED_MORE_OUTPUT => {
+            JXL_ENC_NEED_MORE_OUTPUT => {
                 let offset = next_out.offset_from(compressed.as_ptr());
                 compressed.resize(compressed.len() * 2, 0);
                 next_out = compressed.as_mut_ptr().offset(offset);
                 avail_out = compressed.len() - offset as usize;
             }
-            JxlEncoderStatus_JXL_ENC_SUCCESS => {
+            JXL_ENC_SUCCESS => {
                 compressed.resize(compressed.len() - avail_out, 0);
                 return Ok(compressed);
             }
@@ -61,15 +59,13 @@ unsafe fn encode_oneshot(
         JxlThreadParallelRunnerDefaultNumWorkerThreads(),
     );
 
-    if JxlEncoderStatus_JXL_ENC_SUCCESS
-        != JxlEncoderSetParallelRunner(enc, Some(JxlThreadParallelRunner), runner)
-    {
+    if JXL_ENC_SUCCESS != JxlEncoderSetParallelRunner(enc, Some(JxlThreadParallelRunner), runner) {
         JxlThreadParallelRunnerDestroy(runner);
         JxlEncoderDestroy(enc);
         return Err("JxlEncoderSetParallelRunner failed");
     }
 
-    if JxlEncoderStatus_JXL_ENC_SUCCESS != JxlEncoderSetDimensions(enc, xsize, ysize) {
+    if JXL_ENC_SUCCESS != JxlEncoderSetDimensions(enc, xsize, ysize) {
         JxlThreadParallelRunnerDestroy(runner);
         JxlEncoderDestroy(enc);
         return Err("JxlEncoderSetDimensions failed");
@@ -77,15 +73,15 @@ unsafe fn encode_oneshot(
 
     let pixel_format = JxlPixelFormat {
         num_channels: 4,
-        data_type: JxlDataType_JXL_TYPE_UINT8,
-        endianness: JxlEndianness_JXL_NATIVE_ENDIAN,
+        data_type: JXL_TYPE_UINT8,
+        endianness: JXL_NATIVE_ENDIAN,
         align: 0,
     };
 
     let options = JxlEncoderOptionsCreate(enc, std::ptr::null());
     JxlEncoderOptionsSetLossless(options, 1);
 
-    if JxlEncoderStatus_JXL_ENC_SUCCESS
+    if JXL_ENC_SUCCESS
         != JxlEncoderAddImageFrame(
             options, // moving ownership, no need to destroy later
             &pixel_format,

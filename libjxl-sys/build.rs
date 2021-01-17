@@ -27,6 +27,8 @@ fn main() {
         // `size_t` is `usize` almost everywhere
         // https://github.com/rust-lang/rust-bindgen/issues/1901
         .size_t_is_usize(true)
+        // libjxl already adds appropriate prefixes
+        .prepend_enum_name(false)
         // Finish the builder and generate the bindings.
         .generate()
         // Unwrap the Result and panic on failure.

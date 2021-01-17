@@ -1,5 +1,3 @@
-#![allow(non_upper_case_globals)]
-
 use std::usize;
 
 use libjxl_sys::*;
@@ -13,7 +11,7 @@ fn test_version() {
 
 macro_rules! try_dec {
     ($left:expr) => {{
-        if $left != JxlDecoderStatus_JXL_DEC_SUCCESS {
+        if $left != JXL_DEC_SUCCESS {
             return Err("Decoder failed");
         }
     }};
@@ -44,8 +42,8 @@ unsafe fn decode_loop(
 
     let pixel_format = JxlPixelFormat {
         num_channels: 4,
-        data_type: JxlDataType_JXL_TYPE_UINT8,
-        endianness: JxlEndianness_JXL_NATIVE_ENDIAN,
+        data_type: JXL_TYPE_UINT8,
+        endianness: JXL_NATIVE_ENDIAN,
         align: 0,
     };
 
@@ -55,46 +53,42 @@ unsafe fn decode_loop(
 
     try_dec!(JxlDecoderSubscribeEvents(
         dec,
-        (JxlDecoderStatus_JXL_DEC_BASIC_INFO
-            | JxlDecoderStatus_JXL_DEC_COLOR_ENCODING
-            | JxlDecoderStatus_JXL_DEC_FULL_IMAGE) as i32
+        (JXL_DEC_BASIC_INFO | JXL_DEC_COLOR_ENCODING | JXL_DEC_FULL_IMAGE) as i32
     ));
 
     loop {
         let status = JxlDecoderProcessInput(dec, next_in, &mut avail_in);
 
         match status {
-            JxlDecoderStatus_JXL_DEC_ERROR => return Err("Decoder error"),
-            JxlDecoderStatus_JXL_DEC_NEED_MORE_INPUT => {
-                return Err("Error, already provided all input")
-            }
+            JXL_DEC_ERROR => return Err("Decoder error"),
+            JXL_DEC_NEED_MORE_INPUT => return Err("Error, already provided all input"),
 
             // Get the basic info
-            JxlDecoderStatus_JXL_DEC_BASIC_INFO => {
+            JXL_DEC_BASIC_INFO => {
                 try_dec!(JxlDecoderGetBasicInfo(dec, &mut basic_info));
             }
 
-            JxlDecoderStatus_JXL_DEC_COLOR_ENCODING => {
+            JXL_DEC_COLOR_ENCODING => {
                 // Get the ICC color profile of the pixel data
                 let mut icc_size = 0usize;
                 try_dec!(JxlDecoderGetICCProfileSize(
                     dec,
                     &pixel_format,
-                    JxlColorProfileTarget_JXL_COLOR_PROFILE_TARGET_DATA,
+                    JXL_COLOR_PROFILE_TARGET_DATA,
                     &mut icc_size
                 ));
                 icc_profile.resize(icc_size, 0);
                 try_dec!(JxlDecoderGetColorAsICCProfile(
                     dec,
                     &pixel_format,
-                    JxlColorProfileTarget_JXL_COLOR_PROFILE_TARGET_DATA,
+                    JXL_COLOR_PROFILE_TARGET_DATA,
                     icc_profile.as_mut_ptr(),
                     icc_size
                 ));
             }
 
             // Get the output buffer
-            JxlDecoderStatus_JXL_DEC_NEED_IMAGE_OUT_BUFFER => {
+            JXL_DEC_NEED_IMAGE_OUT_BUFFER => {
                 let mut buffer_size = 0usize;
                 try_dec!(JxlDecoderImageOutBufferSize(
                     dec,
@@ -115,12 +109,12 @@ unsafe fn decode_loop(
                 ));
             }
 
-            JxlDecoderStatus_JXL_DEC_FULL_IMAGE => {
+            JXL_DEC_FULL_IMAGE => {
                 // Nothing to do. Do not yet return. If the image is an animation, more
                 // full frames may be decoded. This example only keeps the last one.
                 continue;
             }
-            JxlDecoderStatus_JXL_DEC_SUCCESS => {
+            JXL_DEC_SUCCESS => {
                 // All decoding successfully finished.
                 return Ok((basic_info, pixels_buffer, icc_profile));
             }
@@ -140,9 +134,7 @@ pub unsafe fn decode_oneshot(
 
     let dec = JxlDecoderCreate(std::ptr::null());
 
-    if JxlDecoderStatus_JXL_DEC_SUCCESS
-        != JxlDecoderSetParallelRunner(dec, Some(JxlThreadParallelRunner), runner)
-    {
+    if JXL_DEC_SUCCESS != JxlDecoderSetParallelRunner(dec, Some(JxlThreadParallelRunner), runner) {
         JxlThreadParallelRunnerDestroy(runner);
         JxlDecoderDestroy(dec);
         return Err("JxlDecoderSubscribeEvents failed");
@@ -168,5 +160,5 @@ fn test_decode_oneshot() {
     assert_eq!(basic_info.xsize, 1404);
     assert_eq!(basic_info.ysize, 936);
     assert_eq!(basic_info.have_container, 0);
-    assert_eq!(basic_info.orientation, JxlOrientation_JXL_ORIENT_IDENTITY);
+    assert_eq!(basic_info.orientation, JXL_ORIENT_IDENTITY);
 }
