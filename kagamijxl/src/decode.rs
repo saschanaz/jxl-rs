@@ -124,7 +124,7 @@ pub unsafe fn decode_oneshot(
 
 #[derive(Default)]
 pub struct Decoder {
-    pub keep_orientation: Option<bool>
+    pub keep_orientation: Option<bool>,
 }
 
 impl Decoder {
@@ -139,16 +139,11 @@ impl Decoder {
     }
 }
 
-pub struct DecoderState {
-    dec: *mut JxlDecoderStruct
+// pub struct DecoderState {
+//     dec: *mut JxlDecoderStruct,
+// }
 
-}
-
-impl DecoderState {
-    pub fn get_basic_info() {
-
-    }
-    pub fn get_first_frame() {
-
-    }
-}
+// impl DecoderState {
+//     pub fn get_basic_info() {}
+//     pub fn get_first_frame() {}
+// }
