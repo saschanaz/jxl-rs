@@ -1,9 +1,19 @@
+use std::path::PathBuf;
+
 use kagamijxl::{Decoder, decode_memory};
 use libjxl_sys::JXL_ORIENT_IDENTITY;
 
+const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
+
 fn get_sample_image() -> Vec<u8> {
     // Resolve path manually or it will fail when running each test
-    let sample_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/sample.jxl");
+    let sample_path = PathBuf::from(MANIFEST_DIR).join("tests/sample.jxl");
+    std::fs::read(sample_path).expect("Failed to read the sample image")
+}
+
+fn get_sample_animation() -> Vec<u8> {
+    // Resolve path manually or it will fail when running each test
+    let sample_path = PathBuf::from(MANIFEST_DIR).join("tests/spinfox.jxl");
     std::fs::read(sample_path).expect("Failed to read the sample image")
 }
 
@@ -58,4 +68,15 @@ fn test_decode_color_profile() {
 
     let result = decoder.decode(&data).expect("Failed to decode the sample image");
     assert_ne!(result.color_profile.len(), 0);
+}
+
+#[test]
+fn test_decode_animation() {
+    let data = get_sample_animation();
+
+    let result = decode_memory(&data).expect("Failed to decode the sample image");
+    assert_eq!(result.frames.len(), 25);
+    for frame in result.frames {
+        assert_ne!(frame.data.len(), 0);
+    }
 }
