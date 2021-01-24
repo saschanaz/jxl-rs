@@ -37,9 +37,6 @@ unsafe fn decode_loop(
     dec: *mut JxlDecoderStruct,
     data: Vec<u8>,
 ) -> Result<(JxlBasicInfo, Vec<u8>, Vec<u8>), &'static str> {
-    let next_in = &mut data.as_ptr();
-    let mut avail_in = data.len();
-
     let pixel_format = JxlPixelFormat {
         num_channels: 4,
         data_type: JXL_TYPE_UINT8,
@@ -56,8 +53,10 @@ unsafe fn decode_loop(
         (JXL_DEC_BASIC_INFO | JXL_DEC_COLOR_ENCODING | JXL_DEC_FULL_IMAGE) as i32
     ));
 
+    JxlDecoderSetInput(dec, data.as_ptr(), data.len());
+
     loop {
-        let status = JxlDecoderProcessInput(dec, next_in, &mut avail_in);
+        let status = JxlDecoderProcessInput(dec);
 
         match status {
             JXL_DEC_ERROR => return Err("Decoder error"),
