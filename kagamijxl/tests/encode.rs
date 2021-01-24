@@ -11,7 +11,8 @@ const RGBA_DATA: [u8; 36] = [
 fn test_encode_memory() {
     let encoded = encode_memory(&RGBA_DATA, 3, 3).expect("Failed to encode");
 
-    let (basic_info, _, _) = decode_memory(&encoded).expect("Failed to decode again");
+    let result = decode_memory(&encoded).expect("Failed to decode again");
+    let basic_info = &result.basic_info;
 
     assert_eq!(basic_info.xsize, 3);
     assert_eq!(basic_info.ysize, 3);
@@ -24,9 +25,10 @@ fn test_encode_lossless() {
 
     let encoded = encoder.encode(&RGBA_DATA, 3, 3).expect("Failed to encode");
 
-    let (basic_info, decoded, _) = decode_memory(&encoded).expect("Failed to decode again");
+    let result = decode_memory(&encoded).expect("Failed to decode again");
+    let basic_info = &result.basic_info;
 
     assert_eq!(basic_info.xsize, 3);
     assert_eq!(basic_info.ysize, 3);
-    assert_eq!(RGBA_DATA, decoded[..]);
+    assert_eq!(RGBA_DATA, result.frames[0].data[..]);
 }
