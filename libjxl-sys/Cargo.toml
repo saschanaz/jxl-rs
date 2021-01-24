@@ -6,11 +6,11 @@ license = "ISC"
 name = "libjxl-sys"
 readme = "README.md"
 repository = "https://github.com/saschanaz/jxl-rs/tree/main/libjxl-sys"
-version = "0.2.1"
+version = "0.2.2"
 links = "jxl"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
 bindgen = "0.56"
-libjxl-src = { version = "0.2.5", path = "../libjxl-src" }
+libjxl-src = { version = "0.2.6", path = "../libjxl-src" }
