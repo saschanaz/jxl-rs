@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use kagamijxl::{Decoder, decode_memory};
+use kagamijxl::{decode_memory, Decoder};
 use libjxl_sys::JXL_ORIENT_IDENTITY;
 
 const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
@@ -43,7 +43,9 @@ fn test_decode_no_frame() {
     let mut decoder = Decoder::default();
     decoder.no_full_frame = true;
 
-    let result = decoder.decode(&data).expect("Failed to decode the sample image");
+    let result = decoder
+        .decode(&data)
+        .expect("Failed to decode the sample image");
     assert_eq!(result.frames.len(), 0);
 }
 
@@ -54,7 +56,9 @@ fn test_decode_dc_frame() {
     let mut decoder = Decoder::default();
     decoder.need_dc_frame = true;
 
-    let result = decoder.decode(&data).expect("Failed to decode the sample image");
+    let result = decoder
+        .decode(&data)
+        .expect("Failed to decode the sample image");
     assert_eq!(result.frames.len(), 1);
     assert_ne!(result.frames[0].dc.len(), 0);
 }
@@ -66,7 +70,9 @@ fn test_decode_color_profile() {
     let mut decoder = Decoder::default();
     decoder.need_color_profile = true;
 
-    let result = decoder.decode(&data).expect("Failed to decode the sample image");
+    let result = decoder
+        .decode(&data)
+        .expect("Failed to decode the sample image");
     assert_ne!(result.color_profile.len(), 0);
 }
 

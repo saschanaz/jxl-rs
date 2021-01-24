@@ -1,6 +1,6 @@
 mod decode;
 mod encode;
-pub use decode::{Decoder, DecodeResult, Frame};
+pub use decode::{DecodeResult, Decoder, Frame};
 pub use encode::Encoder;
 pub use libjxl_sys::JxlBasicInfo;
 
