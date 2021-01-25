@@ -14,7 +14,7 @@ unsafe fn decode_loop(
     pixel_format: &JxlPixelFormat,
     event_flags: JxlDecoderStatus,
 ) -> Result<DecodeResult, &'static str> {
-    try_dec!(JxlDecoderSubscribeEvents(dec, event_flags));
+    try_dec!(JxlDecoderSubscribeEvents(dec, event_flags as i32));
 
     JxlDecoderSetInput(dec, data.as_ptr(), data.len());
 
