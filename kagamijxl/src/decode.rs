@@ -65,13 +65,13 @@ unsafe fn decode_loop(
 
                 name_vec.pop(); // The string ends with null which is redundant in Rust
 
-                let mut frame = Frame::default();
-                frame.name =
-                    String::from_utf8(name_vec).map_err(|_| "Couldn't decode frame name")?;
-                frame.duration = header.duration;
-                frame.timecode = header.timecode;
-                frame.is_last = header.is_last != 0;
-
+                let frame = Frame {
+                    name: String::from_utf8(name_vec).map_err(|_| "Couldn't decode frame name")?,
+                    duration: header.duration,
+                    timecode: header.timecode,
+                    is_last: header.is_last != 0,
+                    ..Default::default()
+                };
                 result.frames.push(frame);
             }
 
