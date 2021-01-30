@@ -14,6 +14,7 @@ unsafe fn decode_loop(
     data: &[u8],
     pixel_format: &JxlPixelFormat,
     event_flags: JxlDecoderStatus,
+    max_frames: Option<usize>,
 ) -> Result<DecodeResult, &'static str> {
     try_dec!(JxlDecoderSubscribeEvents(dec, event_flags as i32));
 
@@ -160,15 +161,19 @@ unsafe fn decode_loop(
             JXL_DEC_FULL_IMAGE => {
                 // Nothing to do. Do not yet return. If the image is an animation, more
                 // full frames may be decoded. This example only keeps the last one.
-                continue;
+                if max_frames.is_some() && result.frames.len() == max_frames.unwrap() {
+                    break;
+                }
             }
             JXL_DEC_SUCCESS => {
                 // All decoding successfully finished.
-                return Ok(result);
+                break;
             }
             _ => return Err("Unknown decoder status"),
         }
     }
+
+    Ok(result)
 }
 
 fn get_event_subscription_flags(dec: &Decoder) -> JxlDecoderStatus {
@@ -217,7 +222,7 @@ pub unsafe fn decode_oneshot(data: &[u8], dec: &Decoder) -> Result<DecodeResult,
         endianness: JXL_NATIVE_ENDIAN,
         align: 0,
     };
-    let result = decode_loop(dec_raw, data, &pixel_format, event_flags);
+    let result = decode_loop(dec_raw, data, &pixel_format, event_flags, dec.max_frames);
 
     JxlThreadParallelRunnerDestroy(runner);
     JxlDecoderDestroy(dec_raw);
@@ -234,6 +239,9 @@ pub struct Decoder {
     pub need_optional_preview: bool,
     pub need_dc_frame: bool,
     pub no_full_frame: bool,
+
+    /** Specify when you need at most N frames */
+    pub max_frames: Option<usize>,
 }
 
 impl Decoder {

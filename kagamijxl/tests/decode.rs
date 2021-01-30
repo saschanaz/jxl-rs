@@ -86,3 +86,18 @@ fn test_decode_animation() {
         assert_ne!(frame.data.len(), 0);
     }
 }
+
+#[test]
+fn test_decode_animation_first() {
+    let data = get_sample_animation();
+
+    let mut decoder = Decoder::default();
+    decoder.max_frames = Some(1);
+
+    let result = decoder
+        .decode(&data)
+        .expect("Failed to decode the sample image");
+
+    assert_eq!(result.frames.len(), 1);
+    assert_ne!(result.frames[0].data.len(), 0);
+}
