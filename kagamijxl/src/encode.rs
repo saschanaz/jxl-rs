@@ -86,6 +86,11 @@ pub struct Encoder {
 }
 
 impl Encoder {
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     unsafe fn create_options(&self, enc: *mut JxlEncoderStruct) -> *mut JxlEncoderOptionsStruct {
         let options = JxlEncoderOptionsCreate(enc, std::ptr::null());
 

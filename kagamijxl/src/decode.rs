@@ -245,6 +245,11 @@ pub struct Decoder {
 }
 
 impl Decoder {
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn decode(&self, data: &[u8]) -> Result<DecodeResult, &'static str> {
         unsafe { decode_oneshot(data, &self) }
     }

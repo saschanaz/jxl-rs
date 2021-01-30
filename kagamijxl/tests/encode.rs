@@ -19,6 +19,32 @@ fn test_encode_memory() {
 }
 
 #[test]
+fn test_encode_default() {
+    let encoded = Encoder::default()
+        .encode(&RGBA_DATA, 3, 3)
+        .expect("Failed to encode");
+
+    let result = decode_memory(&encoded).expect("Failed to decode again");
+    let basic_info = &result.basic_info;
+
+    assert_eq!(basic_info.xsize, 3);
+    assert_eq!(basic_info.ysize, 3);
+}
+
+#[test]
+fn test_encode_new() {
+    let encoded = Encoder::new()
+        .encode(&RGBA_DATA, 3, 3)
+        .expect("Failed to encode");
+
+    let result = decode_memory(&encoded).expect("Failed to decode again");
+    let basic_info = &result.basic_info;
+
+    assert_eq!(basic_info.xsize, 3);
+    assert_eq!(basic_info.ysize, 3);
+}
+
+#[test]
 fn test_encode_lossless() {
     let mut encoder = Encoder::default();
     encoder.lossless = Some(true);

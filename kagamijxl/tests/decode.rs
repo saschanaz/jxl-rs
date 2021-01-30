@@ -37,6 +37,32 @@ fn test_decode_memory() {
 }
 
 #[test]
+fn test_decode_default() {
+    let data = get_sample_image();
+
+    let result = Decoder::default()
+        .decode(&data)
+        .expect("Failed to decode the sample image");
+    let basic_info = &result.basic_info;
+
+    assert_eq!(basic_info.xsize, 1404);
+    assert_eq!(basic_info.ysize, 936);
+}
+
+#[test]
+fn test_decode_new() {
+    let data = get_sample_image();
+
+    let result = Decoder::new()
+        .decode(&data)
+        .expect("Failed to decode the sample image");
+    let basic_info = &result.basic_info;
+
+    assert_eq!(basic_info.xsize, 1404);
+    assert_eq!(basic_info.ysize, 936);
+}
+
+#[test]
 fn test_decode_no_frame() {
     let data = get_sample_image();
 
