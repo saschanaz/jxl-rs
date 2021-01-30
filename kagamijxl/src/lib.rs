@@ -1,8 +1,7 @@
 mod decode;
 mod encode;
-pub use decode::{DecodeResult, Decoder, Frame};
+pub use decode::{DecodeResult, Decoder, Frame, BasicInfo};
 pub use encode::Encoder;
-pub use libjxl_sys::JxlBasicInfo;
 
 pub fn decode_memory(data: &[u8]) -> Result<DecodeResult, &'static str> {
     let decoder = Decoder::default();

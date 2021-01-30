@@ -1,4 +1,5 @@
 use libjxl_sys::*;
+pub use libjxl_sys::{JxlBasicInfo as BasicInfo};
 
 macro_rules! try_dec {
     ($left:expr) => {{
@@ -245,7 +246,7 @@ impl Decoder {
 
 #[derive(Default)]
 pub struct DecodeResult {
-    pub basic_info: JxlBasicInfo,
+    pub basic_info: BasicInfo,
     /** Can be empty unless `need_color_profile` is specified */
     pub color_profile: Vec<u8>,
     /** Can be empty unless `need_optional_preview` is specified */
