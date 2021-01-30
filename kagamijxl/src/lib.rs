@@ -1,6 +1,6 @@
 mod decode;
 mod encode;
-pub use decode::{DecodeResult, Decoder, Frame, BasicInfo};
+pub use decode::{BasicInfo, DecodeResult, Decoder, Frame};
 pub use encode::Encoder;
 
 pub fn decode_memory(data: &[u8]) -> Result<DecodeResult, &'static str> {

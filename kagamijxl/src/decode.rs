@@ -1,5 +1,5 @@
+pub use libjxl_sys::JxlBasicInfo as BasicInfo;
 use libjxl_sys::*;
-pub use libjxl_sys::{JxlBasicInfo as BasicInfo};
 
 macro_rules! try_dec {
     ($left:expr) => {{

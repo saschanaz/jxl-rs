@@ -5,7 +5,7 @@ use libjxl_sys::*;
 #[test]
 fn test_version() {
     unsafe {
-        assert_eq!(JxlDecoderVersion(), 2000);
+        assert_eq!(JxlDecoderVersion(), 3000);
     }
 }
 
