@@ -9,6 +9,159 @@ macro_rules! try_dec {
     }};
 }
 
+unsafe fn read_basic_info(
+    dec: *mut JxlDecoderStruct,
+    result: &mut DecodeResult,
+) -> Result<(), &'static str> {
+    // Get the basic info
+    try_dec!(JxlDecoderGetBasicInfo(dec, &mut result.basic_info));
+    Ok(())
+}
+
+unsafe fn read_color_encoding(
+    dec: *mut JxlDecoderStruct,
+    result: &mut DecodeResult,
+    pixel_format: &JxlPixelFormat,
+) -> Result<(), &'static str> {
+    // Get the ICC color profile of the pixel data
+    let mut icc_size = 0usize;
+    try_dec!(JxlDecoderGetICCProfileSize(
+        dec,
+        pixel_format,
+        JXL_COLOR_PROFILE_TARGET_DATA,
+        &mut icc_size
+    ));
+    result.color_profile.resize(icc_size, 0);
+    try_dec!(JxlDecoderGetColorAsICCProfile(
+        dec,
+        pixel_format,
+        JXL_COLOR_PROFILE_TARGET_DATA,
+        result.color_profile.as_mut_ptr(),
+        icc_size
+    ));
+    Ok(())
+}
+
+unsafe fn prepare_frame(
+    dec: *mut JxlDecoderStruct,
+    result: &mut DecodeResult,
+) -> Result<(), &'static str> {
+    let mut header = JxlFrameHeader::default();
+    try_dec!(JxlDecoderGetFrameHeader(dec, &mut header));
+
+    let mut name_vec: Vec<u8> = Vec::new();
+    name_vec.resize((header.name_length + 1) as usize, 0);
+    try_dec!(JxlDecoderGetFrameName(
+        dec,
+        name_vec.as_mut_ptr() as *mut _,
+        name_vec.len()
+    ));
+
+    name_vec.pop(); // The string ends with null which is redundant in Rust
+
+    let frame = Frame {
+        name: String::from_utf8(name_vec).map_err(|_| "Couldn't decode frame name")?,
+        duration: header.duration,
+        timecode: header.timecode,
+        is_last: header.is_last != 0,
+        ..Default::default()
+    };
+    result.frames.push(frame);
+    Ok(())
+}
+
+unsafe fn prepare_preview_out_buffer(
+    dec: *mut JxlDecoderStruct,
+    result: &mut DecodeResult,
+    pixel_format: &JxlPixelFormat,
+) -> Result<(), &'static str> {
+    let mut buffer_size = 0usize;
+    try_dec!(JxlDecoderPreviewOutBufferSize(
+        dec,
+        pixel_format,
+        &mut buffer_size
+    ));
+
+    if buffer_size != (result.basic_info.xsize * result.basic_info.ysize * 4) as usize {
+        return Err("Invalid preview out buffer size");
+    }
+
+    let buffer = &mut result.preview;
+
+    buffer.resize(buffer_size as usize, 0);
+    try_dec!(JxlDecoderSetPreviewOutBuffer(
+        dec,
+        pixel_format,
+        buffer.as_mut_ptr() as *mut _,
+        buffer_size,
+    ));
+    Ok(())
+}
+
+unsafe fn prepare_dc_out_buffer(
+    dec: *mut JxlDecoderStruct,
+    result: &mut DecodeResult,
+    pixel_format: &JxlPixelFormat,
+) -> Result<(), &'static str> {
+    let mut buffer_size = 0usize;
+    try_dec!(JxlDecoderDCOutBufferSize(
+        dec,
+        pixel_format,
+        &mut buffer_size
+    ));
+
+    if buffer_size > (result.basic_info.xsize * result.basic_info.ysize * 4) as usize {
+        return Err("DC out buffer size is unexpectedly larger than the full buffer size");
+    }
+
+    let buffer = &mut result
+        .frames
+        .last_mut()
+        .expect("Frames vector is unexpectedly empty")
+        .dc;
+
+    buffer.resize(buffer_size as usize, 0);
+    try_dec!(JxlDecoderSetDCOutBuffer(
+        dec,
+        pixel_format,
+        buffer.as_mut_ptr() as *mut _,
+        buffer_size,
+    ));
+    Ok(())
+}
+
+unsafe fn prepare_image_out_buffer(
+    dec: *mut JxlDecoderStruct,
+    result: &mut DecodeResult,
+    pixel_format: &JxlPixelFormat,
+) -> Result<(), &'static str> {
+    let mut buffer_size = 0usize;
+    try_dec!(JxlDecoderImageOutBufferSize(
+        dec,
+        pixel_format,
+        &mut buffer_size
+    ));
+
+    if buffer_size != (result.basic_info.xsize * result.basic_info.ysize * 4) as usize {
+        return Err("Invalid out buffer size");
+    }
+
+    let buffer = &mut result
+        .frames
+        .last_mut()
+        .expect("Frames vector is unexpectedly empty")
+        .data;
+
+    buffer.resize(buffer_size as usize, 0);
+    try_dec!(JxlDecoderSetImageOutBuffer(
+        dec,
+        pixel_format,
+        buffer.as_mut_ptr() as *mut _,
+        buffer_size,
+    ));
+    Ok(())
+}
+
 unsafe fn decode_loop(
     dec: *mut JxlDecoderStruct,
     data: &[u8],
@@ -29,132 +182,21 @@ unsafe fn decode_loop(
             JXL_DEC_ERROR => return Err("Decoder error"),
             JXL_DEC_NEED_MORE_INPUT => return Err("Error, already provided all input"),
 
-            // Get the basic info
-            JXL_DEC_BASIC_INFO => {
-                try_dec!(JxlDecoderGetBasicInfo(dec, &mut result.basic_info));
-            }
+            JXL_DEC_BASIC_INFO => read_basic_info(dec, &mut result)?,
 
-            JXL_DEC_COLOR_ENCODING => {
-                // Get the ICC color profile of the pixel data
-                let mut icc_size = 0usize;
-                try_dec!(JxlDecoderGetICCProfileSize(
-                    dec,
-                    pixel_format,
-                    JXL_COLOR_PROFILE_TARGET_DATA,
-                    &mut icc_size
-                ));
-                result.color_profile.resize(icc_size, 0);
-                try_dec!(JxlDecoderGetColorAsICCProfile(
-                    dec,
-                    pixel_format,
-                    JXL_COLOR_PROFILE_TARGET_DATA,
-                    result.color_profile.as_mut_ptr(),
-                    icc_size
-                ));
-            }
+            JXL_DEC_COLOR_ENCODING => read_color_encoding(dec, &mut result, &pixel_format)?,
 
-            JXL_DEC_FRAME => {
-                let mut header = JxlFrameHeader::default();
-                try_dec!(JxlDecoderGetFrameHeader(dec, &mut header));
-
-                let mut name_vec: Vec<u8> = Vec::new();
-                name_vec.resize((header.name_length + 1) as usize, 0);
-                try_dec!(JxlDecoderGetFrameName(
-                    dec,
-                    name_vec.as_mut_ptr() as *mut _,
-                    name_vec.len()
-                ));
-
-                name_vec.pop(); // The string ends with null which is redundant in Rust
-
-                let frame = Frame {
-                    name: String::from_utf8(name_vec).map_err(|_| "Couldn't decode frame name")?,
-                    duration: header.duration,
-                    timecode: header.timecode,
-                    is_last: header.is_last != 0,
-                    ..Default::default()
-                };
-                result.frames.push(frame);
-            }
+            JXL_DEC_FRAME => prepare_frame(dec, &mut result)?,
 
             JXL_DEC_NEED_PREVIEW_OUT_BUFFER => {
-                let mut buffer_size = 0usize;
-                try_dec!(JxlDecoderPreviewOutBufferSize(
-                    dec,
-                    pixel_format,
-                    &mut buffer_size
-                ));
-
-                if buffer_size != (result.basic_info.xsize * result.basic_info.ysize * 4) as usize {
-                    return Err("Invalid preview out buffer size");
-                }
-
-                let buffer = &mut result.preview;
-
-                buffer.resize(buffer_size as usize, 0);
-                try_dec!(JxlDecoderSetPreviewOutBuffer(
-                    dec,
-                    pixel_format,
-                    buffer.as_mut_ptr() as *mut _,
-                    buffer_size,
-                ));
+                prepare_preview_out_buffer(dec, &mut result, &pixel_format)?
             }
 
-            JXL_DEC_NEED_DC_OUT_BUFFER => {
-                let mut buffer_size = 0usize;
-                try_dec!(JxlDecoderDCOutBufferSize(
-                    dec,
-                    pixel_format,
-                    &mut buffer_size
-                ));
-
-                if buffer_size > (result.basic_info.xsize * result.basic_info.ysize * 4) as usize {
-                    return Err(
-                        "DC out buffer size is unexpectedly larger than the full buffer size",
-                    );
-                }
-
-                let buffer = &mut result
-                    .frames
-                    .last_mut()
-                    .expect("Frames vector is unexpectedly empty")
-                    .dc;
-
-                buffer.resize(buffer_size as usize, 0);
-                try_dec!(JxlDecoderSetDCOutBuffer(
-                    dec,
-                    pixel_format,
-                    buffer.as_mut_ptr() as *mut _,
-                    buffer_size,
-                ));
-            }
+            JXL_DEC_NEED_DC_OUT_BUFFER => prepare_dc_out_buffer(dec, &mut result, &pixel_format)?,
 
             // Get the output buffer
             JXL_DEC_NEED_IMAGE_OUT_BUFFER => {
-                let mut buffer_size = 0usize;
-                try_dec!(JxlDecoderImageOutBufferSize(
-                    dec,
-                    pixel_format,
-                    &mut buffer_size
-                ));
-
-                if buffer_size != (result.basic_info.xsize * result.basic_info.ysize * 4) as usize {
-                    return Err("Invalid out buffer size");
-                }
-
-                let buffer = &mut result
-                    .frames
-                    .last_mut()
-                    .expect("Frames vector is unexpectedly empty")
-                    .data;
-
-                buffer.resize(buffer_size as usize, 0);
-                try_dec!(JxlDecoderSetImageOutBuffer(
-                    dec,
-                    pixel_format,
-                    buffer.as_mut_ptr() as *mut _,
-                    buffer_size,
-                ));
+                prepare_image_out_buffer(dec, &mut result, &pixel_format)?
             }
 
             JXL_DEC_DC_IMAGE => continue,
