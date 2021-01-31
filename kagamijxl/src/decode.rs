@@ -265,8 +265,8 @@ pub unsafe fn decode_oneshot(data: &[u8], dec: &Decoder) -> Result<DecodeResult,
         JxlThreadParallelRunnerDefaultNumWorkerThreads(),
     );
 
-    let set_decoder_result = prepare_decoder(dec, dec_raw, runner);
-    if set_decoder_result.is_err() {
+    let preparation = prepare_decoder(dec, dec_raw, runner);
+    if preparation.is_err() {
         JxlThreadParallelRunnerDestroy(runner);
         JxlDecoderDestroy(dec_raw);
         return Err("Couldn't prepare the decoder");

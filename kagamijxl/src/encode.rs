@@ -1,6 +1,14 @@
-use std::os::raw::c_int;
+use std::{ffi::c_void, os::raw::c_int};
 
 use libjxl_sys::*;
+
+macro_rules! try_enc {
+    ($left:expr) => {{
+        if $left != JXL_ENC_SUCCESS {
+            return Err("Encoder failed");
+        }
+    }};
+}
 
 unsafe fn encode_loop(enc: *mut JxlEncoderStruct) -> Result<Vec<u8>, &'static str> {
     let mut compressed: Vec<u8> = Vec::new();
@@ -25,29 +33,45 @@ unsafe fn encode_loop(enc: *mut JxlEncoderStruct) -> Result<Vec<u8>, &'static st
     }
 }
 
+unsafe fn prepare_encoder(
+    enc: &Encoder,
+    enc_raw: *mut JxlEncoderStruct,
+    xsize: usize,
+    ysize: usize,
+    runner: *mut c_void,
+) -> Result<*mut JxlEncoderOptionsStruct, &'static str> {
+    try_enc!(JxlEncoderSetParallelRunner(
+        enc_raw,
+        Some(JxlThreadParallelRunner),
+        runner
+    ));
+    try_enc!(JxlEncoderSetDimensions(enc_raw, xsize, ysize));
+
+    Ok(enc.create_options(enc_raw)?)
+}
+
 pub unsafe fn encode_oneshot(
     data: &[u8],
     xsize: usize,
     ysize: usize,
-    enc: *mut JxlEncoderStruct,
-    options: *mut JxlEncoderOptionsStruct,
+    enc: &Encoder,
 ) -> Result<Vec<u8>, &'static str> {
     let runner = JxlThreadParallelRunnerCreate(
         std::ptr::null(),
         JxlThreadParallelRunnerDefaultNumWorkerThreads(),
     );
 
-    if JXL_ENC_SUCCESS != JxlEncoderSetParallelRunner(enc, Some(JxlThreadParallelRunner), runner) {
+    let enc_raw = JxlEncoderCreate(std::ptr::null());
+
+    let preparation = prepare_encoder(&enc, enc_raw, xsize, ysize, runner);
+    if preparation.is_err() {
         JxlThreadParallelRunnerDestroy(runner);
-        JxlEncoderDestroy(enc);
-        return Err("JxlEncoderSetParallelRunner failed");
+        JxlEncoderDestroy(enc_raw);
+        return Err("Couldn't prepare the encoder");
     }
 
-    if JXL_ENC_SUCCESS != JxlEncoderSetDimensions(enc, xsize, ysize) {
-        JxlThreadParallelRunnerDestroy(runner);
-        JxlEncoderDestroy(enc);
-        return Err("JxlEncoderSetDimensions failed");
-    }
+    // Options struct is tied to the encoder and thus destructs together
+    let options = preparation.unwrap();
 
     let pixel_format = JxlPixelFormat {
         num_channels: 4,
@@ -58,21 +82,21 @@ pub unsafe fn encode_oneshot(
 
     if JXL_ENC_SUCCESS
         != JxlEncoderAddImageFrame(
-            options, // moving ownership, no need to destroy later
+            options,
             &pixel_format,
             data.as_ptr() as *mut std::ffi::c_void,
             data.len(),
         )
     {
         JxlThreadParallelRunnerDestroy(runner);
-        JxlEncoderDestroy(enc);
+        JxlEncoderDestroy(enc_raw);
         return Err("JxlEncoderAddImageFrame failed");
     }
 
-    let result = encode_loop(enc);
+    let result = encode_loop(enc_raw);
 
     JxlThreadParallelRunnerDestroy(runner);
-    JxlEncoderDestroy(enc);
+    JxlEncoderDestroy(enc_raw);
 
     result
 }
@@ -91,26 +115,25 @@ impl Encoder {
         Self::default()
     }
 
-    unsafe fn create_options(&self, enc: *mut JxlEncoderStruct) -> *mut JxlEncoderOptionsStruct {
+    unsafe fn create_options(&self, enc: *mut JxlEncoderStruct) -> Result<*mut JxlEncoderOptionsStruct, &'static str> {
         let options = JxlEncoderOptionsCreate(enc, std::ptr::null());
 
         if let Some(lossless) = self.lossless {
-            JxlEncoderOptionsSetLossless(options, lossless as i32);
+            try_enc!(JxlEncoderOptionsSetLossless(options, lossless as i32));
         }
         if let Some(effort) = self.effort {
-            JxlEncoderOptionsSetEffort(options, effort as c_int);
+            try_enc!(JxlEncoderOptionsSetEffort(options, effort as c_int));
         }
         if let Some(distance) = self.distance {
-            JxlEncoderOptionsSetDistance(options, distance);
+            try_enc!(JxlEncoderOptionsSetDistance(options, distance));
         }
 
-        options
+        Ok(options)
     }
 
     pub fn encode(&self, data: &[u8], xsize: usize, ysize: usize) -> Result<Vec<u8>, &'static str> {
         unsafe {
-            let enc = JxlEncoderCreate(std::ptr::null());
-            encode_oneshot(data, xsize, ysize, enc, self.create_options(enc))
+            encode_oneshot(data, xsize, ysize, &self)
         }
     }
 }
