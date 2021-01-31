@@ -1,7 +1,7 @@
 mod decode;
 mod encode;
 pub use decode::{DecodeResult, Decoder, Frame};
-pub use encode::Encoder;
+pub use encode::{BitmapFrame, Encoder, JpegFrame};
 pub use libjxl_sys::JxlBasicInfo as BasicInfo;
 
 pub fn decode_memory(data: &[u8]) -> Result<DecodeResult, &'static str> {

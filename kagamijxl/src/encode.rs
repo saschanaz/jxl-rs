@@ -38,7 +38,8 @@ unsafe fn prepare_encoder(
     enc_raw: *mut JxlEncoderStruct,
     basic_info: &JxlBasicInfo,
     runner: *mut c_void,
-) -> Result<*mut JxlEncoderOptionsStruct, &'static str> {
+    frame: &dyn InputFrame,
+) -> Result<(), &'static str> {
     try_enc!(JxlEncoderSetParallelRunner(
         enc_raw,
         Some(JxlThreadParallelRunner),
@@ -47,10 +48,40 @@ unsafe fn prepare_encoder(
 
     try_enc!(JxlEncoderSetBasicInfo(enc_raw, basic_info));
 
-    Ok(enc.create_options(enc_raw)?)
+    let options = enc.create_options(enc_raw)?;
+
+    match frame.get_type() {
+        FrameType::Bitmap => {
+            let pixel_format = JxlPixelFormat {
+                num_channels: 4,
+                data_type: JXL_TYPE_UINT8,
+                endianness: JXL_NATIVE_ENDIAN,
+                align: 0,
+            };
+            try_enc!(JxlEncoderAddImageFrame(
+                options,
+                &pixel_format,
+                frame.get_data().as_ptr() as *mut std::ffi::c_void,
+                frame.get_data().len(),
+            ));
+        }
+        FrameType::Jpeg => {
+            try_enc!(JxlEncoderStoreJPEGMetadata(enc_raw, 1));
+            try_enc!(JxlEncoderAddJPEGFrame(
+                options,
+                frame.get_data().as_ptr(),
+                frame.get_data().len(),
+            ))
+        }
+    }
+
+    Ok(())
 }
 
-pub unsafe fn encode_oneshot(data: &[u8], enc: &Encoder) -> Result<Vec<u8>, &'static str> {
+pub unsafe fn encode_oneshot(
+    frame: &dyn InputFrame,
+    enc: &Encoder,
+) -> Result<Vec<u8>, &'static str> {
     let runner = JxlThreadParallelRunnerCreate(
         std::ptr::null(),
         JxlThreadParallelRunnerDefaultNumWorkerThreads(),
@@ -58,34 +89,11 @@ pub unsafe fn encode_oneshot(data: &[u8], enc: &Encoder) -> Result<Vec<u8>, &'st
 
     let enc_raw = JxlEncoderCreate(std::ptr::null());
 
-    let preparation = prepare_encoder(&enc, enc_raw, &enc.basic_info, runner);
+    let preparation = prepare_encoder(&enc, enc_raw, &enc.basic_info, runner, frame);
     if preparation.is_err() {
         JxlThreadParallelRunnerDestroy(runner);
         JxlEncoderDestroy(enc_raw);
         return Err("Couldn't prepare the encoder");
-    }
-
-    // Options struct is tied to the encoder and thus destructs together
-    let options = preparation.unwrap();
-
-    let pixel_format = JxlPixelFormat {
-        num_channels: 4,
-        data_type: JXL_TYPE_UINT8,
-        endianness: JXL_NATIVE_ENDIAN,
-        align: 0,
-    };
-
-    if JXL_ENC_SUCCESS
-        != JxlEncoderAddImageFrame(
-            options,
-            &pixel_format,
-            data.as_ptr() as *mut std::ffi::c_void,
-            data.len(),
-        )
-    {
-        JxlThreadParallelRunnerDestroy(runner);
-        JxlEncoderDestroy(enc_raw);
-        return Err("JxlEncoderAddImageFrame failed");
     }
 
     let result = encode_loop(enc_raw);
@@ -95,6 +103,45 @@ pub unsafe fn encode_oneshot(data: &[u8], enc: &Encoder) -> Result<Vec<u8>, &'st
 
     result
 }
+
+pub enum FrameType {
+    Bitmap,
+    Jpeg,
+}
+
+pub trait InputFrame<'a> {
+    fn get_type(&self) -> FrameType;
+    fn get_data(&self) -> &'a [u8];
+}
+
+pub struct BitmapFrame<'a> {
+    pub data: &'a [u8],
+}
+
+impl<'a> InputFrame<'a> for BitmapFrame<'a> {
+    fn get_type(&self) -> FrameType {
+        FrameType::Bitmap
+    }
+
+    fn get_data(&self) -> &'a [u8] {
+        self.data
+    }
+}
+
+pub struct JpegFrame<'a> {
+    pub data: &'a [u8],
+}
+
+impl<'a> InputFrame<'a> for JpegFrame<'a> {
+    fn get_type(&self) -> FrameType {
+        FrameType::Jpeg
+    }
+
+    fn get_data(&self) -> &'a [u8] {
+        self.data
+    }
+}
+
 pub struct Encoder {
     pub lossless: Option<bool>,
     pub effort: Option<i32>,
@@ -110,9 +157,9 @@ impl Encoder {
 
     unsafe fn create_options(
         &self,
-        enc: *mut JxlEncoderStruct,
+        enc_raw: *mut JxlEncoderStruct,
     ) -> Result<*mut JxlEncoderOptionsStruct, &'static str> {
-        let options = JxlEncoderOptionsCreate(enc, std::ptr::null());
+        let options = JxlEncoderOptionsCreate(enc_raw, std::ptr::null());
 
         if let Some(lossless) = self.lossless {
             try_enc!(JxlEncoderOptionsSetLossless(options, lossless as i32));
@@ -128,7 +175,12 @@ impl Encoder {
     }
 
     pub fn encode(&self, data: &[u8]) -> Result<Vec<u8>, &'static str> {
-        unsafe { encode_oneshot(data, &self) }
+        let frame = BitmapFrame { data };
+        self.encode_frame(&frame)
+    }
+
+    pub fn encode_frame(&self, frame: &dyn InputFrame) -> Result<Vec<u8>, &'static str> {
+        unsafe { encode_oneshot(frame, &self) }
     }
 }
 
