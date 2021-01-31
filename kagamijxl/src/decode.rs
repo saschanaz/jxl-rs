@@ -1,3 +1,5 @@
+use std::ffi::c_void;
+
 pub use libjxl_sys::JxlBasicInfo as BasicInfo;
 use libjxl_sys::*;
 
@@ -235,11 +237,27 @@ fn get_event_subscription_flags(dec: &Decoder) -> JxlDecoderStatus {
     flags
 }
 
+unsafe fn prepare_decoder(
+    dec: &Decoder,
+    dec_raw: *mut JxlDecoderStruct,
+    runner: *mut c_void,
+) -> Result<(), &'static str> {
+    if let Some(keep_orientation) = dec.keep_orientation {
+        try_dec!(JxlDecoderSetKeepOrientation(
+            dec_raw,
+            keep_orientation as i32
+        ));
+    }
+    try_dec!(JxlDecoderSetParallelRunner(
+        dec_raw,
+        Some(JxlThreadParallelRunner),
+        runner
+    ));
+    Ok(())
+}
+
 pub unsafe fn decode_oneshot(data: &[u8], dec: &Decoder) -> Result<DecodeResult, &'static str> {
     let dec_raw = JxlDecoderCreate(std::ptr::null());
-    if let Some(keep_orientation) = dec.keep_orientation {
-        JxlDecoderSetKeepOrientation(dec_raw, keep_orientation as i32);
-    }
 
     // Multi-threaded parallel runner.
     let runner = JxlThreadParallelRunnerCreate(
@@ -247,12 +265,11 @@ pub unsafe fn decode_oneshot(data: &[u8], dec: &Decoder) -> Result<DecodeResult,
         JxlThreadParallelRunnerDefaultNumWorkerThreads(),
     );
 
-    if JXL_DEC_SUCCESS
-        != JxlDecoderSetParallelRunner(dec_raw, Some(JxlThreadParallelRunner), runner)
-    {
+    let set_decoder_result = prepare_decoder(dec, dec_raw, runner);
+    if set_decoder_result.is_err() {
         JxlThreadParallelRunnerDestroy(runner);
         JxlDecoderDestroy(dec_raw);
-        return Err("JxlDecoderSubscribeEvents failed");
+        return Err("Couldn't prepare the decoder");
     }
 
     let event_flags = get_event_subscription_flags(&dec);
