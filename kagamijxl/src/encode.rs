@@ -79,7 +79,7 @@ pub unsafe fn encode_oneshot(
 
 #[derive(Default)]
 pub struct Encoder {
-    pub dimensions: Option<(usize, usize)>,
+    // pub dimensions: Option<(usize, usize)>,
     pub lossless: Option<bool>,
     pub effort: Option<i32>,
     pub distance: Option<f32>,
@@ -110,9 +110,6 @@ impl Encoder {
     pub fn encode(&self, data: &[u8], xsize: usize, ysize: usize) -> Result<Vec<u8>, &'static str> {
         unsafe {
             let enc = JxlEncoderCreate(std::ptr::null());
-            if let Some(dimensions) = self.dimensions {
-                JxlEncoderSetDimensions(enc, dimensions.0, dimensions.1);
-            }
             encode_oneshot(data, xsize, ysize, enc, self.create_options(enc))
         }
     }
