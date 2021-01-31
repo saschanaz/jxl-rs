@@ -4,10 +4,14 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    println!("cargo:rerun-if-changed=wrapper.h");
-    libjxl_src::print_cargo_link();
+    libjxl_src::build();
 
-    let include_dir = format!("{}/include", libjxl_src::out_dir());
+    let out_dir = std::env::var("OUT_DIR").unwrap();
+
+    println!("cargo:rerun-if-changed=wrapper.h");
+    libjxl_src::print_cargo_link_from(&out_dir);
+
+    let include_dir = format!("{}/include", out_dir);
     println!("cargo:include={}", include_dir);
 
     // The bindgen::Builder is the main entry point

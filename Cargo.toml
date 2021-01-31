@@ -4,8 +4,3 @@ members = [
     "libjxl-sys",
     "kagamijxl",
 ]
-
-# Override opt-level because build dependencies by default are not optimized
-# https://doc.rust-lang.org/cargo/reference/profiles.html#build-dependencies
-[profile.release.package.libjxl-src]
-opt-level = 3

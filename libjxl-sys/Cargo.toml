@@ -15,4 +15,4 @@ links = "jxl"
 
 [build-dependencies]
 bindgen = "0.56"
-libjxl-src = { version = "0.3.0", path = "../libjxl-src" }
+libjxl-src = { version = "0.3.0", path = "../libjxl-src", default-features = false }

@@ -1,10 +1,18 @@
+mod build;
+pub use build::build;
+
 pub fn out_dir() -> &'static str {
     std::env!("OUT_DIR")
 }
 
 pub fn print_cargo_link() {
-    let dst = out_dir();
+    print_cargo_link_from(out_dir())
+}
 
+/**
+ * @param dst Pass OUT_DIR environment variable value.
+ */
+pub fn print_cargo_link_from(dst: &str) {
     #[cfg(all(windows, debug_assertions))]
     // Prevents "undefined symbol _CrtDbgReport" linker error
     println!("cargo:rustc-link-lib=dylib=msvcrtd");
