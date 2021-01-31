@@ -115,7 +115,10 @@ impl Encoder {
         Self::default()
     }
 
-    unsafe fn create_options(&self, enc: *mut JxlEncoderStruct) -> Result<*mut JxlEncoderOptionsStruct, &'static str> {
+    unsafe fn create_options(
+        &self,
+        enc: *mut JxlEncoderStruct,
+    ) -> Result<*mut JxlEncoderOptionsStruct, &'static str> {
         let options = JxlEncoderOptionsCreate(enc, std::ptr::null());
 
         if let Some(lossless) = self.lossless {
@@ -132,8 +135,6 @@ impl Encoder {
     }
 
     pub fn encode(&self, data: &[u8], xsize: usize, ysize: usize) -> Result<Vec<u8>, &'static str> {
-        unsafe {
-            encode_oneshot(data, xsize, ysize, &self)
-        }
+        unsafe { encode_oneshot(data, xsize, ysize, &self) }
     }
 }
