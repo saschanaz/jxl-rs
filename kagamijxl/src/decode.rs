@@ -1,4 +1,8 @@
-use std::ffi::c_void;
+use std::{
+    ffi::c_void,
+    fs::File,
+    io::{BufRead, BufReader},
+};
 
 pub use libjxl_sys::JxlBasicInfo as BasicInfo;
 use libjxl_sys::*;
@@ -166,14 +170,15 @@ unsafe fn prepare_image_out_buffer(
 
 unsafe fn decode_loop(
     dec: *mut JxlDecoderStruct,
-    data: &[u8],
+    mut data: impl BufRead,
     pixel_format: &JxlPixelFormat,
     event_flags: JxlDecoderStatus,
     max_frames: Option<usize>,
 ) -> Result<DecodeResult, &'static str> {
     try_dec!(JxlDecoderSubscribeEvents(dec, event_flags as i32));
 
-    JxlDecoderSetInput(dec, data.as_ptr(), data.len());
+    let mut buffer = data.fill_buf().map_err(|_| "Couldn't read buffer")?;
+    try_dec!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
 
     let mut result = DecodeResult::default();
 
@@ -182,7 +187,12 @@ unsafe fn decode_loop(
 
         match status {
             JXL_DEC_ERROR => return Err("Decoder error"),
-            JXL_DEC_NEED_MORE_INPUT => return Err("Error, already provided all input"),
+            JXL_DEC_NEED_MORE_INPUT => {
+                let consumed = buffer.len() - JxlDecoderReleaseInput(dec);
+                data.consume(consumed);
+                buffer = data.fill_buf().map_err(|_| "Couldn't read buffer")?;
+                try_dec!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
+            }
 
             JXL_DEC_BASIC_INFO => read_basic_info(dec, &mut result)?,
 
@@ -256,7 +266,10 @@ unsafe fn prepare_decoder(
     Ok(())
 }
 
-pub unsafe fn decode_oneshot(data: &[u8], dec: &Decoder) -> Result<DecodeResult, &'static str> {
+pub unsafe fn decode_oneshot(
+    data: impl BufRead,
+    dec: &Decoder,
+) -> Result<DecodeResult, &'static str> {
     let dec_raw = JxlDecoderCreate(std::ptr::null());
 
     // Multi-threaded parallel runner.
@@ -310,10 +323,17 @@ impl Decoder {
     }
 
     pub fn decode(&self, data: &[u8]) -> Result<DecodeResult, &'static str> {
-        unsafe { decode_oneshot(data, &self) }
+        // Just a helpful alias of decode_buffer for Vec which doesn't implement BufRead by itself
+        self.decode_buffer(data)
     }
 
-    // decode_iter()?
+    pub fn decode_file(&self, file: &File) -> Result<DecodeResult, &'static str> {
+        self.decode_buffer(BufReader::new(file))
+    }
+
+    pub fn decode_buffer(&self, buffer: impl BufRead) -> Result<DecodeResult, &'static str> {
+        unsafe { decode_oneshot(buffer, &self) }
+    }
 }
 
 #[derive(Default)]

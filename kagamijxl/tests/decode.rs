@@ -1,14 +1,21 @@
-use std::path::PathBuf;
+use std::{fs::File, path::PathBuf};
 
 use kagamijxl::{decode_memory, Decoder};
 use libjxl_sys::JXL_ORIENT_IDENTITY;
 
 const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
 
-fn get_sample_image() -> Vec<u8> {
+fn sample_image_path() -> PathBuf {
     // Resolve path manually or it will fail when running each test
-    let sample_path = PathBuf::from(MANIFEST_DIR).join("tests/sample.jxl");
-    std::fs::read(sample_path).expect("Failed to read the sample image")
+    PathBuf::from(MANIFEST_DIR).join("tests/sample.jxl")
+}
+
+fn get_sample_image() -> Vec<u8> {
+    std::fs::read(sample_image_path()).expect("Failed to read the sample image")
+}
+
+fn get_sample_image_file() -> File {
+    File::open(sample_image_path()).expect("Failed to read the sample image")
 }
 
 fn get_sample_animation() -> Vec<u8> {
@@ -100,6 +107,19 @@ fn test_decode_color_profile() {
         .decode(&data)
         .expect("Failed to decode the sample image");
     assert_ne!(result.color_profile.len(), 0);
+}
+
+#[test]
+fn test_decode_file() {
+    let file = get_sample_image_file();
+
+    let result = Decoder::default()
+        .decode_file(&file)
+        .expect("Failed to decode the sample image");
+    let basic_info = &result.basic_info;
+
+    assert_eq!(basic_info.xsize, 1404);
+    assert_eq!(basic_info.ysize, 936);
 }
 
 #[test]
