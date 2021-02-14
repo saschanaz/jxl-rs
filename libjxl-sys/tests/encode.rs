@@ -66,10 +66,11 @@ unsafe fn encode_oneshot(
     }
 
     let basic_info = JxlBasicInfo {
-        xsize: xsize as u32,
-        ysize: ysize as u32,
+        xsize: xsize as _,
+        ysize: ysize as _,
         bits_per_sample: 8,
         alpha_bits: 8,
+        uses_original_profile: true as _,
         ..Default::default()
     };
 
@@ -126,5 +127,5 @@ fn test_encode_oneshot() {
 
     assert_eq!(basic_info.xsize, 3);
     assert_eq!(basic_info.ysize, 3);
-    assert_ne!(data, decoded); // TODO: replace this back to assert_eq. 0.3.2 seemingly has a bug
+    assert_eq!(data, decoded);
 }

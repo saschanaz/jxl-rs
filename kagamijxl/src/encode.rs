@@ -141,6 +141,7 @@ impl Default for Encoder {
             basic_info: JxlBasicInfo {
                 bits_per_sample: 8,
                 alpha_bits: 8,
+                uses_original_profile: true as _,
                 ..Default::default()
             },
         }

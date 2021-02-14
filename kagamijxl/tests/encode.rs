@@ -58,5 +58,5 @@ fn test_encode_lossless() {
 
     assert_eq!(basic_info.xsize, 3);
     assert_eq!(basic_info.ysize, 3);
-    assert_ne!(RGBA_DATA, result.frames[0].data[..]); // 0.3.2 seemingly has a problem where lossless is not really lossless
+    assert_eq!(RGBA_DATA, result.frames[0].data[..]);
 }
