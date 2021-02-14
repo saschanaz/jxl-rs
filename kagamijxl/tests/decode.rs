@@ -88,7 +88,7 @@ fn test_decode_dc_frame() {
     let data = get_sample_image();
 
     let mut decoder = Decoder::default();
-    decoder.need_dc_frame = true;
+    decoder.need_optional_dc_frame = true;
 
     let result = decoder
         .decode(&data)

@@ -238,7 +238,7 @@ fn get_event_subscription_flags(dec: &Decoder) -> JxlDecoderStatus {
     if dec.need_optional_preview {
         flags |= JXL_DEC_PREVIEW_IMAGE;
     }
-    if dec.need_dc_frame {
+    if dec.need_optional_dc_frame {
         flags |= JXL_DEC_FRAME | JXL_DEC_DC_IMAGE;
     }
     if !dec.no_full_frame {
@@ -309,7 +309,7 @@ pub struct Decoder {
     // pub pixel_format: Option<JxlPixelFormat>,
     pub need_color_profile: bool,
     pub need_optional_preview: bool,
-    pub need_dc_frame: bool,
+    pub need_optional_dc_frame: bool,
     pub no_full_frame: bool,
 
     /** Specify when you need at most N frames */
