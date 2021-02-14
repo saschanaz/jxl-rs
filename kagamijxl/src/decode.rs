@@ -4,7 +4,7 @@ use std::{
     io::{BufRead, BufReader},
 };
 
-pub use libjxl_sys::JxlBasicInfo as BasicInfo;
+use crate::BasicInfo;
 use libjxl_sys::*;
 
 macro_rules! try_dec {
@@ -214,7 +214,7 @@ unsafe fn decode_loop(
             JXL_DEC_DC_IMAGE => continue,
             JXL_DEC_FULL_IMAGE => {
                 // Nothing to do. Do not yet return. If the image is an animation, more
-                // full frames may be decoded. This example only keeps the last one.
+                // full frames may be decoded.
                 if max_frames.is_some() && result.frames.len() == max_frames.unwrap() {
                     break;
                 }

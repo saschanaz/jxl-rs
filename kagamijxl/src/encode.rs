@@ -36,8 +36,7 @@ unsafe fn encode_loop(enc: *mut JxlEncoderStruct) -> Result<Vec<u8>, &'static st
 unsafe fn prepare_encoder(
     enc: &Encoder,
     enc_raw: *mut JxlEncoderStruct,
-    xsize: usize,
-    ysize: usize,
+    basic_info: &JxlBasicInfo,
     runner: *mut c_void,
 ) -> Result<*mut JxlEncoderOptionsStruct, &'static str> {
     try_enc!(JxlEncoderSetParallelRunner(
@@ -45,17 +44,13 @@ unsafe fn prepare_encoder(
         Some(JxlThreadParallelRunner),
         runner
     ));
-    try_enc!(JxlEncoderSetDimensions(enc_raw, xsize, ysize));
+
+    try_enc!(JxlEncoderSetBasicInfo(enc_raw, basic_info));
 
     Ok(enc.create_options(enc_raw)?)
 }
 
-pub unsafe fn encode_oneshot(
-    data: &[u8],
-    xsize: usize,
-    ysize: usize,
-    enc: &Encoder,
-) -> Result<Vec<u8>, &'static str> {
+pub unsafe fn encode_oneshot(data: &[u8], enc: &Encoder) -> Result<Vec<u8>, &'static str> {
     let runner = JxlThreadParallelRunnerCreate(
         std::ptr::null(),
         JxlThreadParallelRunnerDefaultNumWorkerThreads(),
@@ -63,7 +58,7 @@ pub unsafe fn encode_oneshot(
 
     let enc_raw = JxlEncoderCreate(std::ptr::null());
 
-    let preparation = prepare_encoder(&enc, enc_raw, xsize, ysize, runner);
+    let preparation = prepare_encoder(&enc, enc_raw, &enc.basic_info, runner);
     if preparation.is_err() {
         JxlThreadParallelRunnerDestroy(runner);
         JxlEncoderDestroy(enc_raw);
@@ -100,13 +95,11 @@ pub unsafe fn encode_oneshot(
 
     result
 }
-
-#[derive(Default)]
 pub struct Encoder {
-    // pub dimensions: Option<(usize, usize)>,
     pub lossless: Option<bool>,
     pub effort: Option<i32>,
     pub distance: Option<f32>,
+    pub basic_info: JxlBasicInfo,
 }
 
 impl Encoder {
@@ -134,7 +127,22 @@ impl Encoder {
         Ok(options)
     }
 
-    pub fn encode(&self, data: &[u8], xsize: usize, ysize: usize) -> Result<Vec<u8>, &'static str> {
-        unsafe { encode_oneshot(data, xsize, ysize, &self) }
+    pub fn encode(&self, data: &[u8]) -> Result<Vec<u8>, &'static str> {
+        unsafe { encode_oneshot(data, &self) }
+    }
+}
+
+impl Default for Encoder {
+    fn default() -> Self {
+        Self {
+            lossless: None,
+            effort: None,
+            distance: None,
+            basic_info: JxlBasicInfo {
+                bits_per_sample: 8,
+                alpha_bits: 8,
+                ..Default::default()
+            },
+        }
     }
 }
