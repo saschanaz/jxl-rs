@@ -4,7 +4,7 @@ mod decode;
 #[test]
 fn test_version() {
     unsafe {
-        assert_eq!(JxlEncoderVersion(), 3002);
+        assert_eq!(JxlEncoderVersion(), 3003);
     }
 }
 

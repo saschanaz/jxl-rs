@@ -21,5 +21,6 @@ pub fn build() {
     config
         .define("JPEGXL_STATIC", "ON")
         .define("BUILD_TESTING", "OFF")
+        .define("JPEGXL_ENABLE_EXAMPLES", "OFF")
         .build();
 }
