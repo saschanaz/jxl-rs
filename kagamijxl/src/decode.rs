@@ -174,10 +174,13 @@ unsafe fn decode_loop(
     pixel_format: &JxlPixelFormat,
     event_flags: JxlDecoderStatus,
     max_frames: Option<usize>,
+    allow_partial: bool,
 ) -> Result<DecodeResult, &'static str> {
     try_dec!(JxlDecoderSubscribeEvents(dec, event_flags as i32));
 
-    let mut buffer = data.fill_buf().map_err(|_| "Couldn't read buffer")?;
+    let mut buffer = data
+        .fill_buf()
+        .map_err(|_| "Couldn't read initial buffer")?;
     try_dec!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
 
     let mut result = DecodeResult::default();
@@ -190,8 +193,18 @@ unsafe fn decode_loop(
             JXL_DEC_NEED_MORE_INPUT => {
                 let consumed = buffer.len() - JxlDecoderReleaseInput(dec);
                 data.consume(consumed);
-                buffer = data.fill_buf().map_err(|_| "Couldn't read buffer")?;
-                try_dec!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
+                buffer = data.fill_buf().or(Ok(&[]))?;
+                if buffer.len() == 0 {
+                    if allow_partial {
+                        prepare_image_out_buffer(dec, &mut result, &pixel_format)?;
+                        try_dec!(JxlDecoderFlushImage(dec));
+                        break;
+                    } else {
+                        return Err("Couldn't read more buffer");
+                    }
+                } else {
+                    try_dec!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
+                }
             }
 
             JXL_DEC_BASIC_INFO => read_basic_info(dec, &mut result)?,
@@ -294,7 +307,14 @@ pub unsafe fn decode_oneshot(
         endianness: JXL_NATIVE_ENDIAN,
         align: 0,
     };
-    let result = decode_loop(dec_raw, data, &pixel_format, event_flags, dec.max_frames);
+    let result = decode_loop(
+        dec_raw,
+        data,
+        &pixel_format,
+        event_flags,
+        dec.max_frames,
+        dec.allow_partial,
+    );
 
     JxlThreadParallelRunnerDestroy(runner);
     JxlDecoderDestroy(dec_raw);
@@ -314,6 +334,8 @@ pub struct Decoder {
 
     /** Specify when you need at most N frames */
     pub max_frames: Option<usize>,
+    /** Specify when partial input is expected */
+    pub allow_partial: bool,
 }
 
 impl Decoder {

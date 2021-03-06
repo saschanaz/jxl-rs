@@ -161,3 +161,30 @@ fn test_decode_animation_first() {
     assert_eq!(result.frames.len(), 1);
     assert_ne!(result.frames[0].data.len(), 0);
 }
+
+#[test]
+fn test_decode_partial() {
+    let data = get_sample_image();
+
+    let mut decoder = Decoder::default();
+    decoder.allow_partial = true;
+
+    let result = decoder
+        .decode(&data[..40960])
+        .expect("Failed to decode the sample image");
+
+    assert_eq!(result.frames.len(), 1);
+    assert_ne!(result.frames[0].data.len(), 0);
+}
+
+#[test]
+#[should_panic]
+fn test_decode_partial_fail() {
+    let data = get_sample_image();
+
+    let result = decode_memory(&data[..40960])
+        .expect("Failed to decode the sample image");
+
+    assert_eq!(result.frames.len(), 1);
+    assert_ne!(result.frames[0].data.len(), 0);
+}
