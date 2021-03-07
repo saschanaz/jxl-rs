@@ -194,7 +194,7 @@ unsafe fn decode_loop(
                 let consumed = buffer.len() - JxlDecoderReleaseInput(dec);
                 data.consume(consumed);
                 buffer = data.fill_buf().or(Ok(&[]))?;
-                if buffer.len() == 0 {
+                if buffer.is_empty() {
                     if allow_partial {
                         prepare_image_out_buffer(dec, &mut result, &pixel_format)?;
                         try_dec!(JxlDecoderFlushImage(dec));
