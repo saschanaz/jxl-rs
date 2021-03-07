@@ -182,8 +182,7 @@ fn test_decode_partial() {
 fn test_decode_partial_fail() {
     let data = get_sample_image();
 
-    let result = decode_memory(&data[..40960])
-        .expect("Failed to decode the sample image");
+    let result = decode_memory(&data[..40960]).expect("Failed to decode the sample image");
 
     assert_eq!(result.frames.len(), 1);
     assert_ne!(result.frames[0].data.len(), 0);
