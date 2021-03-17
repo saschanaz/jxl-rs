@@ -8,7 +8,7 @@ categories = ["multimedia::images"]
 name = "libjxl-sys"
 readme = "README.md"
 repository = "https://github.com/saschanaz/jxl-rs/tree/main/libjxl-sys"
-version = "0.3.3"
+version = "0.3.4"
 links = "jxl"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

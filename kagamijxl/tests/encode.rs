@@ -112,27 +112,3 @@ fn test_encode_jpeg_frame() {
     assert_eq!(result.frames.len(), 1);
     assert_eq!(result.frames[0].data[0], 57);
 }
-
-// https://gitlab.com/wg1/jpeg-xl/-/issues/167
-// This fails on C++ side and thus can't run
-// #[test]
-// fn test_encode_jpeg_frame_lossless() {
-//     let mut encoder = Encoder::default();
-//     encoder.lossless = Some(true);
-//     encoder.basic_info.xsize = 800;
-//     encoder.basic_info.ysize = 533;
-//     encoder.basic_info.alpha_bits = 0;
-
-//     let frame = JpegFrame {
-//         data: &get_sample_jpeg()[..],
-//     };
-//     let encoded = encoder.encode_frame(&frame).expect("Failed to encode");
-
-//     let result = decode_memory(&encoded).expect("Failed to decode again");
-//     let basic_info = &result.basic_info;
-
-//     assert_eq!(basic_info.xsize, 800);
-//     assert_eq!(basic_info.ysize, 533);
-//     assert_eq!(result.frames.len(), 1);
-//     assert_eq!(result.frames[0].data[0], 57);
-// }
