@@ -7,7 +7,7 @@ const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
 
 fn sample_image_path() -> PathBuf {
     // Resolve path manually or it will fail when running each test
-    PathBuf::from(MANIFEST_DIR).join("tests/sample.jxl")
+    PathBuf::from(MANIFEST_DIR).join("tests/resources/sample.jxl")
 }
 
 fn get_sample_image() -> Vec<u8> {
@@ -20,7 +20,7 @@ fn get_sample_image_file() -> File {
 
 fn get_sample_animation() -> Vec<u8> {
     // Resolve path manually or it will fail when running each test
-    let sample_path = PathBuf::from(MANIFEST_DIR).join("tests/spinfox.jxl");
+    let sample_path = PathBuf::from(MANIFEST_DIR).join("tests/resources/spinfox.jxl");
     std::fs::read(sample_path).expect("Failed to read the sample image")
 }
 

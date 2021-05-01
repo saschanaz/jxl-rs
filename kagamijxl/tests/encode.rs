@@ -12,7 +12,7 @@ const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
 
 fn sample_jpeg_path() -> PathBuf {
     // Resolve path manually or it will fail when running each test
-    PathBuf::from(MANIFEST_DIR).join("tests/sample.jpg")
+    PathBuf::from(MANIFEST_DIR).join("tests/resources/sample.jpg")
 }
 
 fn get_sample_jpeg() -> Vec<u8> {
