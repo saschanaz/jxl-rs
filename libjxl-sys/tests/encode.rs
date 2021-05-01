@@ -4,7 +4,7 @@ mod decode;
 #[test]
 fn test_version() {
     unsafe {
-        assert_eq!(JxlEncoderVersion(), 3004);
+        assert_eq!(JxlEncoderVersion(), 3007);
     }
 }
 
@@ -89,6 +89,10 @@ unsafe fn encode_oneshot(
 
     let options = JxlEncoderOptionsCreate(enc, std::ptr::null());
     JxlEncoderOptionsSetLossless(options, 1);
+
+    let mut color_encoding = JxlColorEncoding::default();
+    JxlColorEncodingSetToSRGB(&mut color_encoding, 0);
+    JxlEncoderSetColorEncoding(enc, &color_encoding);
 
     if JXL_ENC_SUCCESS
         != JxlEncoderAddImageFrame(

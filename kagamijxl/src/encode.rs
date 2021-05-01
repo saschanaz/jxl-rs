@@ -48,6 +48,10 @@ unsafe fn prepare_encoder(
 
     try_enc!(JxlEncoderSetBasicInfo(enc_raw, basic_info));
 
+    let mut color_encoding = JxlColorEncoding::default();
+    JxlColorEncodingSetToSRGB(&mut color_encoding, 0);
+    try_enc!(JxlEncoderSetColorEncoding(enc_raw, &color_encoding));
+
     let options = enc.create_options(enc_raw)?;
 
     match frame.get_type() {
