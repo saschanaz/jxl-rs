@@ -82,19 +82,20 @@ fn test_decode_no_frame() {
     assert_eq!(result.frames.len(), 0);
 }
 
-#[test]
-fn test_decode_dc_frame() {
-    let data = get_sample_image();
+// https://gitlab.com/wg1/jpeg-xl/-/issues/194
+// #[test]
+// fn test_decode_dc_frame() {
+//     let data = get_sample_image();
 
-    let mut decoder = Decoder::default();
-    decoder.need_optional_dc_frame = true;
+//     let mut decoder = Decoder::default();
+//     decoder.need_optional_dc_frame = true;
 
-    let result = decoder
-        .decode(&data)
-        .expect("Failed to decode the sample image");
-    assert_eq!(result.frames.len(), 1);
-    assert_ne!(result.frames[0].dc.len(), 0);
-}
+//     let result = decoder
+//         .decode(&data)
+//         .expect("Failed to decode the sample image");
+//     assert_eq!(result.frames.len(), 1);
+//     assert_ne!(result.frames[0].dc.len(), 0);
+// }
 
 #[test]
 fn test_decode_dc_frame_animation() {
@@ -134,6 +135,20 @@ fn test_decode_file() {
 
     assert_eq!(basic_info.xsize, 1404);
     assert_eq!(basic_info.ysize, 936);
+}
+
+#[test]
+fn test_decode_need_more_input() {
+    let path = PathBuf::from(MANIFEST_DIR).join("tests/resources/needmoreinput.jxl");
+    let file = File::open(path).expect("Failed to open the sample image");
+
+    let result = Decoder::default()
+        .decode_file(&file)
+        .expect("Failed to decode the sample image");
+    let basic_info = &result.basic_info;
+
+    assert_eq!(basic_info.xsize, 3264);
+    assert_eq!(basic_info.ysize, 1836);
 }
 
 #[test]
