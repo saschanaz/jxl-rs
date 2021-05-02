@@ -191,8 +191,16 @@ unsafe fn decode_loop(
         match status {
             JXL_DEC_ERROR => return Err("Decoder error"),
             JXL_DEC_NEED_MORE_INPUT => {
-                let consumed = buffer.len() - JxlDecoderReleaseInput(dec);
+                let mut vec: Vec<u8> = Vec::new();
+
+                let remaining = JxlDecoderReleaseInput(dec);
+                let consumed = buffer.len() - remaining;
                 data.consume(consumed);
+                if remaining > 0 {
+                    vec.resize(remaining, 0);
+                    data.read(&mut vec[0..remaining]).unwrap();
+                }
+
                 buffer = data.fill_buf().or(Ok(&[]))?;
                 if buffer.is_empty() {
                     if allow_partial {
@@ -202,9 +210,15 @@ unsafe fn decode_loop(
                     } else {
                         return Err("Couldn't read more buffer");
                     }
-                } else {
-                    try_dec!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
                 }
+
+                let input = if remaining > 0 {
+                    vec.extend(buffer);
+                    &vec[..]
+                } else {
+                    buffer
+                };
+                try_dec!(JxlDecoderSetInput(dec, input.as_ptr(), input.len()));
             }
 
             JXL_DEC_BASIC_INFO => read_basic_info(dec, &mut result)?,
