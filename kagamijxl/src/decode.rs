@@ -198,7 +198,7 @@ unsafe fn decode_loop(
                 data.consume(consumed);
                 if remaining > 0 {
                     vec.resize(remaining, 0);
-                    data.read(&mut vec[0..remaining]).unwrap();
+                    data.read_exact(&mut vec[0..remaining]).unwrap();
                 }
 
                 buffer = data.fill_buf().or(Ok(&[]))?;
