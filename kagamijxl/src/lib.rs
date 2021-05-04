@@ -1,3 +1,5 @@
+mod contiguous_buffer;
+mod coupled_bufread;
 mod decode;
 mod encode;
 pub use decode::{DecodeResult, Decoder, Frame};

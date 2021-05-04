@@ -4,7 +4,7 @@ use std::{
     io::{BufRead, BufReader},
 };
 
-use crate::BasicInfo;
+use crate::{contiguous_buffer::ContiguousBuffer, BasicInfo};
 use libjxl_sys::*;
 
 macro_rules! try_dec {
@@ -170,7 +170,7 @@ unsafe fn prepare_image_out_buffer(
 
 unsafe fn decode_loop(
     dec: *mut JxlDecoderStruct,
-    mut data: impl BufRead,
+    data: impl BufRead,
     pixel_format: &JxlPixelFormat,
     event_flags: JxlDecoderStatus,
     max_frames: Option<usize>,
@@ -178,9 +178,7 @@ unsafe fn decode_loop(
 ) -> Result<DecodeResult, &'static str> {
     try_dec!(JxlDecoderSubscribeEvents(dec, event_flags as i32));
 
-    let mut buffer = data
-        .fill_buf()
-        .map_err(|_| "Couldn't read initial buffer")?;
+    let mut buffer = ContiguousBuffer::new(data);
     try_dec!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
 
     let mut result = DecodeResult::default();
@@ -191,18 +189,11 @@ unsafe fn decode_loop(
         match status {
             JXL_DEC_ERROR => return Err("Decoder error"),
             JXL_DEC_NEED_MORE_INPUT => {
-                let mut vec: Vec<u8> = Vec::new();
-
                 let remaining = JxlDecoderReleaseInput(dec);
                 let consumed = buffer.len() - remaining;
-                data.consume(consumed);
-                if remaining > 0 {
-                    vec.resize(remaining, 0);
-                    data.read_exact(&mut vec[0..remaining]).unwrap();
-                }
+                buffer.consume(consumed);
 
-                buffer = data.fill_buf().or(Ok(&[]))?;
-                if buffer.is_empty() {
+                if buffer.more_buf().is_err() {
                     if allow_partial {
                         prepare_image_out_buffer(dec, &mut result, &pixel_format)?;
                         try_dec!(JxlDecoderFlushImage(dec));
@@ -212,13 +203,7 @@ unsafe fn decode_loop(
                     }
                 }
 
-                let input = if remaining > 0 {
-                    vec.extend(buffer);
-                    &vec[..]
-                } else {
-                    buffer
-                };
-                try_dec!(JxlDecoderSetInput(dec, input.as_ptr(), input.len()));
+                try_dec!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
             }
 
             JXL_DEC_BASIC_INFO => read_basic_info(dec, &mut result)?,
