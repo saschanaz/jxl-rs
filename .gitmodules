@@ -1,4 +1,3 @@
-[submodule "libjxl-src/submodules/jpeg-xl"]
-	path = libjxl-src/submodules/jpeg-xl
-	url = https://gitlab.com/wg1/jpeg-xl.git
-	# url = https://github.com/saschanaz/jpeg-xl.git
+[submodule "libjxl-src/submodules/libjxl"]
+	path = libjxl-src/submodules/libjxl
+	url = https://github.com/libjxl/libjxl.git

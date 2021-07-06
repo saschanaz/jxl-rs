@@ -3,7 +3,7 @@ use std::env;
 use std::path::Path;
 
 pub fn build() {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("submodules/jpeg-xl");
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("submodules/libjxl");
     let mut config = Config::new(path);
     config.define("JPEGXL_ENABLE_OPENEXR", "OFF");
     config.define("JPEGXL_ENABLE_BENCHMARK", "OFF");

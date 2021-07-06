@@ -1,6 +1,6 @@
 [package]
 name = "libjxl-src"
-version = "0.3.7"
+version = "0.3.8"
 authors = ["Kagami Sascha Rosylight <saschanaz@outlook.com>"]
 license = "ISC"
 keywords = ["libjxl", "jxl", "jpegxl"]
@@ -10,24 +10,24 @@ repository = "https://github.com/saschanaz/jxl-rs/tree/main/libjxl-src"
 edition = "2018"
 build = "build.rs"
 exclude = [
-  "submodules/jpeg-xl/third_party/brotli/csharp",
-  "submodules/jpeg-xl/third_party/brotli/docs",
-  "submodules/jpeg-xl/third_party/brotli/fetch-spec",
-  "submodules/jpeg-xl/third_party/brotli/go",
-  "submodules/jpeg-xl/third_party/brotli/java",
-  "submodules/jpeg-xl/third_party/brotli/js",
-  "submodules/jpeg-xl/third_party/brotli/python",
-  "submodules/jpeg-xl/third_party/brotli/research",
-  "submodules/jpeg-xl/third_party/brotli/tests",
-  "submodules/jpeg-xl/third_party/difftest_ng",
-  "submodules/jpeg-xl/third_party/googletest",
-  "submodules/jpeg-xl/third_party/highway/g3doc",
-  "submodules/jpeg-xl/third_party/IQA-optimization",
-  "submodules/jpeg-xl/third_party/lcms",
-  "submodules/jpeg-xl/third_party/skcms/profiles",
-  "submodules/jpeg-xl/third_party/sjpeg/tests",
-  "submodules/jpeg-xl/third_party/testdata",
-  "submodules/jpeg-xl/third_party/vmaf",
+  "submodules/libjxl/third_party/brotli/csharp",
+  "submodules/libjxl/third_party/brotli/docs",
+  "submodules/libjxl/third_party/brotli/fetch-spec",
+  "submodules/libjxl/third_party/brotli/go",
+  "submodules/libjxl/third_party/brotli/java",
+  "submodules/libjxl/third_party/brotli/js",
+  "submodules/libjxl/third_party/brotli/python",
+  "submodules/libjxl/third_party/brotli/research",
+  "submodules/libjxl/third_party/brotli/tests",
+  "submodules/libjxl/third_party/difftest_ng",
+  "submodules/libjxl/third_party/googletest",
+  "submodules/libjxl/third_party/highway/g3doc",
+  "submodules/libjxl/third_party/IQA-optimization",
+  "submodules/libjxl/third_party/lcms",
+  "submodules/libjxl/third_party/skcms/profiles",
+  "submodules/libjxl/third_party/sjpeg/tests",
+  "submodules/libjxl/third_party/testdata",
+  "submodules/libjxl/third_party/vmaf",
 ]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
