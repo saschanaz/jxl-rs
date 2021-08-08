@@ -1,3 +1,4 @@
 [submodule "libjxl-src/submodules/libjxl"]
 	path = libjxl-src/submodules/libjxl
 	url = https://github.com/libjxl/libjxl.git
+	branch = v0.5.x

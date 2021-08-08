@@ -1,6 +1,6 @@
 [package]
 name = "kagamijxl"
-version = "0.2.8"
+version = "0.2.9"
 authors = ["Kagami Sascha Rosylight <saschanaz@outlook.com>"]
 edition = "2018"
 description = "Opinionated JPEG XL decoder/encoder library."
@@ -13,4 +13,4 @@ categories = ["multimedia::images"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-libjxl-sys = { version = "0.3.5", path = "../libjxl-sys" }
+libjxl-sys = { version = "0.5.0", path = "../libjxl-sys" }
