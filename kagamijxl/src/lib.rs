@@ -8,7 +8,7 @@ pub use libjxl_sys::JxlBasicInfo as BasicInfo;
 
 pub fn decode_memory(data: &[u8]) -> Result<DecodeResult, &'static str> {
     let decoder = Decoder::default();
-    decoder.decode(&data)
+    decoder.decode(data)
 }
 
 pub fn check_signature(data: &[u8]) -> libjxl_sys::JxlSignature {
@@ -19,5 +19,5 @@ pub fn encode_memory(data: &[u8], xsize: usize, ysize: usize) -> Result<Vec<u8>,
     let mut encoder = Encoder::default();
     encoder.basic_info.xsize = xsize as u32;
     encoder.basic_info.ysize = ysize as u32;
-    encoder.encode(&data)
+    encoder.encode(data)
 }
