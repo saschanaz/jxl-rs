@@ -4,7 +4,7 @@ mod decode;
 #[test]
 fn test_version() {
     unsafe {
-        assert_eq!(JxlEncoderVersion(), 3007);
+        assert_eq!(JxlEncoderVersion(), 7000);
     }
 }
 
@@ -65,13 +65,14 @@ unsafe fn encode_oneshot(
         return Err("JxlEncoderSetParallelRunner failed");
     }
 
-    let basic_info = JxlBasicInfo {
-        xsize: xsize as _,
-        ysize: ysize as _,
-        bits_per_sample: 8,
-        alpha_bits: 8,
-        uses_original_profile: true as _,
-        ..Default::default()
+    let basic_info = {
+        let mut info = JxlBasicInfo::default();
+        JxlEncoderInitBasicInfo(&mut info);
+        info.xsize = xsize as _;
+        info.ysize = ysize as _;
+        info.alpha_bits = 8;
+        info.uses_original_profile = true as _;
+        info
     };
 
     if JXL_ENC_SUCCESS != JxlEncoderSetBasicInfo(enc, &basic_info) {

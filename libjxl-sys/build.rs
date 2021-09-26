@@ -25,7 +25,7 @@ fn main() {
         .clang_arg("-I")
         .clang_arg(include_dir)
         // Reduce noise from system libs.
-        .whitelist_function("Jxl.*")
+        .allowlist_function("Jxl.*")
         // #[derive(Default)] for struct initialization.
         .derive_default(true)
         // `size_t` is `usize` almost everywhere

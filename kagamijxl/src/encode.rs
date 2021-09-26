@@ -190,16 +190,18 @@ impl Encoder {
 
 impl Default for Encoder {
     fn default() -> Self {
+        let mut basic_info = JxlBasicInfo::default();
+        unsafe {
+            JxlEncoderInitBasicInfo(&mut basic_info);
+        }
+        basic_info.alpha_bits = 8;
+        basic_info.uses_original_profile = true as _;
+
         Self {
             lossless: None,
             effort: None,
             distance: None,
-            basic_info: JxlBasicInfo {
-                bits_per_sample: 8,
-                alpha_bits: 8,
-                uses_original_profile: true as _,
-                ..Default::default()
-            },
+            basic_info,
         }
     }
 }

@@ -39,7 +39,6 @@ pub fn print_cargo_link_from(dst: &str) {
     println!("cargo:rustc-link-lib=static=brotlidec-static");
     println!("cargo:rustc-link-lib=static=brotlienc-static");
     println!("cargo:rustc-link-lib=static=hwy");
-    println!("cargo:rustc-link-lib=static=skcms");
 
     #[cfg(not(windows))]
     // The order matters; this should be after other libs or the linker fails
