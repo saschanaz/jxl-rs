@@ -195,7 +195,7 @@ unsafe fn decode_loop(
 
                 if buffer.more_buf().is_err() {
                     if allow_partial {
-                        prepare_image_out_buffer(dec, &mut result, &pixel_format)?;
+                        prepare_image_out_buffer(dec, &mut result, pixel_format)?;
                         try_dec!(JxlDecoderFlushImage(dec));
                         break;
                     } else {
@@ -208,19 +208,19 @@ unsafe fn decode_loop(
 
             JXL_DEC_BASIC_INFO => read_basic_info(dec, &mut result)?,
 
-            JXL_DEC_COLOR_ENCODING => read_color_encoding(dec, &mut result, &pixel_format)?,
+            JXL_DEC_COLOR_ENCODING => read_color_encoding(dec, &mut result, pixel_format)?,
 
             JXL_DEC_FRAME => prepare_frame(dec, &mut result)?,
 
             JXL_DEC_NEED_PREVIEW_OUT_BUFFER => {
-                prepare_preview_out_buffer(dec, &mut result, &pixel_format)?
+                prepare_preview_out_buffer(dec, &mut result, pixel_format)?
             }
 
-            JXL_DEC_NEED_DC_OUT_BUFFER => prepare_dc_out_buffer(dec, &mut result, &pixel_format)?,
+            JXL_DEC_NEED_DC_OUT_BUFFER => prepare_dc_out_buffer(dec, &mut result, pixel_format)?,
 
             // Get the output buffer
             JXL_DEC_NEED_IMAGE_OUT_BUFFER => {
-                prepare_image_out_buffer(dec, &mut result, &pixel_format)?
+                prepare_image_out_buffer(dec, &mut result, pixel_format)?
             }
 
             JXL_DEC_DC_IMAGE => continue,
@@ -297,7 +297,7 @@ pub unsafe fn decode_oneshot(
         return Err("Couldn't prepare the decoder");
     }
 
-    let event_flags = get_event_subscription_flags(&dec);
+    let event_flags = get_event_subscription_flags(dec);
     // TODO: Support different pixel format
     // Not sure how to type the output vector properly
     let pixel_format = JxlPixelFormat {
@@ -353,7 +353,7 @@ impl Decoder {
     }
 
     pub fn decode_buffer(&self, buffer: impl BufRead) -> Result<DecodeResult, &'static str> {
-        unsafe { decode_oneshot(buffer, &self) }
+        unsafe { decode_oneshot(buffer, self) }
     }
 }
 

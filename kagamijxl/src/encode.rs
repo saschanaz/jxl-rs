@@ -93,7 +93,7 @@ pub unsafe fn encode_oneshot(
 
     let enc_raw = JxlEncoderCreate(std::ptr::null());
 
-    let preparation = prepare_encoder(&enc, enc_raw, &enc.basic_info, runner, frame);
+    let preparation = prepare_encoder(enc, enc_raw, &enc.basic_info, runner, frame);
     if preparation.is_err() {
         JxlThreadParallelRunnerDestroy(runner);
         JxlEncoderDestroy(enc_raw);
@@ -184,7 +184,7 @@ impl Encoder {
     }
 
     pub fn encode_frame(&self, frame: &dyn InputFrame) -> Result<Vec<u8>, &'static str> {
-        unsafe { encode_oneshot(frame, &self) }
+        unsafe { encode_oneshot(frame, self) }
     }
 }
 
