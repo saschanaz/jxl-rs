@@ -150,15 +150,15 @@ unsafe fn decode_loop(
     progress: &mut DecodeProgress,
     data: impl BufRead,
     pixel_format: &JxlPixelFormat,
-    event_flags: JxlDecoderStatus,
-    max_frames: Option<usize>,
+    stop_on_frame: bool,
     allow_partial: bool,
 ) -> Result<(), JxlError> {
     let dec = progress.raw.decoder;
 
-    try_dec_fatal!(JxlDecoderSubscribeEvents(dec, event_flags as i32));
-
-    let mut buffer = ContiguousBuffer::new(data);
+    let mut buffer = ContiguousBuffer::new(
+        progress.unread_buffer.take().unwrap_or_else(|| Vec::new()),
+        data,
+    );
     try_dec_fatal!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
 
     loop {
@@ -173,7 +173,6 @@ unsafe fn decode_loop(
 
                 if buffer.more_buf().is_err() {
                     if allow_partial {
-                        progress.is_partial = true;
                         try_dec_fatal!(JxlDecoderFlushImage(dec));
                         break;
                     } else {
@@ -200,17 +199,21 @@ unsafe fn decode_loop(
             JXL_DEC_FULL_IMAGE => {
                 // Nothing to do. Do not yet return. If the image is an animation, more
                 // full frames may be decoded.
-                if max_frames.is_some() && progress.frames.len() == max_frames.unwrap() {
+                if stop_on_frame {
+                    JxlDecoderReleaseInput(dec);
                     break;
                 }
             }
             JXL_DEC_SUCCESS => {
                 // All decoding successfully finished.
+                progress.is_partial = false;
                 break;
             }
             _ => return Err(JxlError::Fatal), // Unknown status
         }
     }
+
+    progress.unread_buffer = Some(buffer.take_unread());
 
     Ok(())
 }
@@ -250,6 +253,11 @@ pub unsafe fn decode_oneshot(
     let mut progress = DecodeProgress::new(dec.keep_orientation)?;
 
     let event_flags = get_event_subscription_flags(dec);
+    try_dec_fatal!(JxlDecoderSubscribeEvents(
+        progress.raw.decoder,
+        event_flags as i32
+    ));
+
     // TODO: Support different pixel format
     // Not sure how to type the output vector properly
     let pixel_format = JxlPixelFormat {
@@ -262,8 +270,7 @@ pub unsafe fn decode_oneshot(
         &mut progress,
         data,
         &pixel_format,
-        event_flags,
-        dec.max_frames,
+        dec.stop_on_frame,
         dec.allow_partial,
     )?;
 
@@ -279,8 +286,8 @@ pub struct Decoder {
     pub need_optional_preview: bool,
     pub no_full_frame: bool,
 
-    /** Specify when you need at most N frames */
-    pub max_frames: Option<usize>,
+    /** Specify if you want to stop on the first frame decode */
+    pub stop_on_frame: bool,
     /** Specify when partial input is expected */
     pub allow_partial: bool,
 }
@@ -303,10 +310,6 @@ impl Decoder {
     pub fn decode_buffer(&self, buffer: impl BufRead) -> Result<DecodeProgress, JxlError> {
         unsafe { decode_oneshot(buffer, self) }
     }
-
-    // TODO:
-    // Each decode call creates a new JxlDecoder but that doesn't need to be the case.
-    // How about a static decode() receiving an option bag and returning a ongoing decode object including a live JxlDecoder, so that something like .proceed() can continue the decode?
 }
 
 struct DecodeRaw {
@@ -325,6 +328,7 @@ impl Drop for DecodeRaw {
 
 pub struct DecodeProgress {
     raw: DecodeRaw,
+    unread_buffer: Option<Vec<u8>>,
 
     is_partial: bool,
 
@@ -354,8 +358,9 @@ impl DecodeProgress {
                 decoder,
                 parallel_runner,
             },
+            unread_buffer: None,
 
-            is_partial: false,
+            is_partial: true,
 
             basic_info: BasicInfo::default(),
             color_profile: Vec::new(),
@@ -368,7 +373,23 @@ impl DecodeProgress {
         self.is_partial
     }
 
-    pub fn proceed(&self) {}
+    pub fn proceed(
+        &mut self,
+        data: impl BufRead,
+        allow_partial: bool,
+        stop_on_frame: bool,
+    ) -> Result<(), JxlError> {
+        // TODO: Support different pixel format
+        // Not sure how to type the output vector properly
+        let pixel_format = JxlPixelFormat {
+            num_channels: 4,
+            data_type: JXL_TYPE_UINT8,
+            endianness: JXL_NATIVE_ENDIAN,
+            align: 0,
+        };
+        unsafe { decode_loop(self, data, &pixel_format, stop_on_frame, allow_partial)? };
+        Ok(())
+    }
 }
 
 #[derive(Default)]

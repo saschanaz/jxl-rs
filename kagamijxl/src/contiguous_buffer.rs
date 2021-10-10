@@ -12,9 +12,9 @@ impl<T> ContiguousBuffer<T>
 where
     T: BufRead,
 {
-    pub fn new(buffer: T) -> ContiguousBuffer<T> {
+    pub fn new(unread: Vec<u8>, buffer: T) -> Self {
         ContiguousBuffer {
-            contiguous: Vec::new(),
+            contiguous: unread,
             buffer: CoupledBufRead::new(buffer),
             position: 0,
         }
@@ -76,6 +76,10 @@ where
     pub fn len(&self) -> usize {
         self.as_slice().len()
     }
+
+    pub fn take_unread(self) -> Vec<u8> {
+        self.contiguous
+    }
 }
 
 #[cfg(test)]
@@ -87,7 +91,7 @@ mod tests {
     #[test]
     fn consume_all() {
         let vec = vec![1, 2, 3];
-        let mut buffer = ContiguousBuffer::new(&vec[..]);
+        let mut buffer = ContiguousBuffer::new(Vec::new(), &vec[..]);
         buffer.more_buf().unwrap();
         assert_eq!(buffer.as_slice(), [1, 2, 3]);
 
@@ -102,7 +106,7 @@ mod tests {
     fn consume_and_more() {
         let vec = vec![1, 2, 3, 4];
         let reader = BufReader::with_capacity(2, &vec[..]);
-        let mut buffer = ContiguousBuffer::new(reader);
+        let mut buffer = ContiguousBuffer::new(Vec::new(), reader);
         buffer.more_buf().unwrap();
         assert_eq!(buffer.as_slice(), [1, 2]);
 
@@ -117,7 +121,7 @@ mod tests {
     fn partial_consume() {
         let vec = vec![1, 2, 3, 4, 5];
         let reader = BufReader::with_capacity(2, &vec[..]);
-        let mut buffer = ContiguousBuffer::new(reader);
+        let mut buffer = ContiguousBuffer::new(Vec::new(), reader);
         buffer.more_buf().unwrap();
         assert_eq!(buffer.as_slice(), [1, 2]);
 
@@ -135,7 +139,7 @@ mod tests {
     fn partial_consume_and_more() {
         let vec = vec![1, 2, 3, 4, 5];
         let reader = BufReader::with_capacity(2, &vec[..]);
-        let mut buffer = ContiguousBuffer::new(reader);
+        let mut buffer = ContiguousBuffer::new(Vec::new(), reader);
         buffer.more_buf().unwrap();
         assert_eq!(buffer.as_slice(), [1, 2]);
 

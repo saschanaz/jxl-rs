@@ -138,7 +138,7 @@ fn test_decode_animation_first() {
     let data = get_sample_animation();
 
     let mut decoder = Decoder::default();
-    decoder.max_frames = Some(1);
+    decoder.stop_on_frame = true;
 
     let result = decoder
         .decode(&data)
@@ -155,13 +155,18 @@ fn test_decode_partial() {
     let mut decoder = Decoder::default();
     decoder.allow_partial = true;
 
-    let result = decoder
+    let mut result = decoder
         .decode(&data[..40960])
         .expect("Failed to decode the sample image");
 
     assert!(result.is_partial());
     assert_eq!(result.frames.len(), 1);
     assert_ne!(result.frames[0].data.len(), 0);
+
+    result
+        .proceed(&data[40960..], true, false)
+        .expect("Should be able to proceed");
+    assert!(!result.is_partial());
 }
 
 #[test]
