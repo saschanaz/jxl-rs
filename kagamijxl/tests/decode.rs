@@ -51,6 +51,7 @@ fn test_decode_default() {
         .expect("Failed to decode the sample image");
     let basic_info = &result.basic_info;
 
+    assert!(!result.is_partial());
     assert_eq!(basic_info.xsize, 1404);
     assert_eq!(basic_info.ysize, 936);
 }
@@ -158,6 +159,7 @@ fn test_decode_partial() {
         .decode(&data[..40960])
         .expect("Failed to decode the sample image");
 
+    assert!(result.is_partial());
     assert_eq!(result.frames.len(), 1);
     assert_ne!(result.frames[0].data.len(), 0);
 }

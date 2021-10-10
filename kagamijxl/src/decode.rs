@@ -1,5 +1,6 @@
 use std::{
     ffi::c_void,
+    fmt::Debug,
     fs::File,
     io::{BufRead, BufReader},
 };
@@ -7,38 +8,45 @@ use std::{
 use crate::{contiguous_buffer::ContiguousBuffer, BasicInfo};
 use libjxl_sys::*;
 
-macro_rules! try_dec {
+#[derive(Debug)]
+pub enum JxlError {
+    AllocationFailed,
+    InputNotComplete,
+    Fatal,
+}
+
+macro_rules! try_dec_fatal {
     ($left:expr) => {{
         if $left != JXL_DEC_SUCCESS {
-            return Err("Decoder failed");
+            return Err(JxlError::Fatal);
         }
     }};
 }
 
 unsafe fn read_basic_info(
     dec: *mut JxlDecoderStruct,
-    result: &mut DecodeResult,
-) -> Result<(), &'static str> {
+    result: &mut DecodeProgress,
+) -> Result<(), JxlError> {
     // Get the basic info
-    try_dec!(JxlDecoderGetBasicInfo(dec, &mut result.basic_info));
+    try_dec_fatal!(JxlDecoderGetBasicInfo(dec, &mut result.basic_info));
     Ok(())
 }
 
 unsafe fn read_color_encoding(
     dec: *mut JxlDecoderStruct,
-    result: &mut DecodeResult,
+    result: &mut DecodeProgress,
     pixel_format: &JxlPixelFormat,
-) -> Result<(), &'static str> {
+) -> Result<(), JxlError> {
     // Get the ICC color profile of the pixel data
     let mut icc_size = 0usize;
-    try_dec!(JxlDecoderGetICCProfileSize(
+    try_dec_fatal!(JxlDecoderGetICCProfileSize(
         dec,
         pixel_format,
         JXL_COLOR_PROFILE_TARGET_DATA,
         &mut icc_size
     ));
     result.color_profile.resize(icc_size, 0);
-    try_dec!(JxlDecoderGetColorAsICCProfile(
+    try_dec_fatal!(JxlDecoderGetColorAsICCProfile(
         dec,
         pixel_format,
         JXL_COLOR_PROFILE_TARGET_DATA,
@@ -50,14 +58,14 @@ unsafe fn read_color_encoding(
 
 unsafe fn prepare_frame(
     dec: *mut JxlDecoderStruct,
-    result: &mut DecodeResult,
-) -> Result<(), &'static str> {
+    result: &mut DecodeProgress,
+) -> Result<(), JxlError> {
     let mut header = JxlFrameHeader::default();
-    try_dec!(JxlDecoderGetFrameHeader(dec, &mut header));
+    try_dec_fatal!(JxlDecoderGetFrameHeader(dec, &mut header));
 
     let mut name_vec: Vec<u8> = Vec::new();
     name_vec.resize((header.name_length + 1) as usize, 0);
-    try_dec!(JxlDecoderGetFrameName(
+    try_dec_fatal!(JxlDecoderGetFrameName(
         dec,
         name_vec.as_mut_ptr() as *mut _,
         name_vec.len()
@@ -66,7 +74,7 @@ unsafe fn prepare_frame(
     name_vec.pop(); // The string ends with null which is redundant in Rust
 
     let frame = Frame {
-        name: String::from_utf8(name_vec).map_err(|_| "Couldn't decode frame name")?,
+        name: String::from_utf8(name_vec).map_err(|_| JxlError::Fatal)?,
         duration: header.duration,
         timecode: header.timecode,
         is_last: header.is_last != 0,
@@ -78,24 +86,25 @@ unsafe fn prepare_frame(
 
 unsafe fn prepare_preview_out_buffer(
     dec: *mut JxlDecoderStruct,
-    result: &mut DecodeResult,
+    result: &mut DecodeProgress,
     pixel_format: &JxlPixelFormat,
-) -> Result<(), &'static str> {
+) -> Result<(), JxlError> {
     let mut buffer_size = 0usize;
-    try_dec!(JxlDecoderPreviewOutBufferSize(
+    try_dec_fatal!(JxlDecoderPreviewOutBufferSize(
         dec,
         pixel_format,
         &mut buffer_size
     ));
 
-    if buffer_size != (result.basic_info.xsize * result.basic_info.ysize * 4) as usize {
-        return Err("Invalid preview out buffer size");
-    }
+    assert_eq!(
+        buffer_size,
+        (result.basic_info.xsize * result.basic_info.ysize * 4) as usize
+    );
 
     let buffer = &mut result.preview;
 
     buffer.resize(buffer_size as usize, 0);
-    try_dec!(JxlDecoderSetPreviewOutBuffer(
+    try_dec_fatal!(JxlDecoderSetPreviewOutBuffer(
         dec,
         pixel_format,
         buffer.as_mut_ptr() as *mut _,
@@ -106,19 +115,20 @@ unsafe fn prepare_preview_out_buffer(
 
 unsafe fn prepare_image_out_buffer(
     dec: *mut JxlDecoderStruct,
-    result: &mut DecodeResult,
+    result: &mut DecodeProgress,
     pixel_format: &JxlPixelFormat,
-) -> Result<(), &'static str> {
+) -> Result<(), JxlError> {
     let mut buffer_size = 0usize;
-    try_dec!(JxlDecoderImageOutBufferSize(
+    try_dec_fatal!(JxlDecoderImageOutBufferSize(
         dec,
         pixel_format,
         &mut buffer_size
     ));
 
-    if buffer_size != (result.basic_info.xsize * result.basic_info.ysize * 4) as usize {
-        return Err("Invalid out buffer size");
-    }
+    assert_eq!(
+        buffer_size,
+        (result.basic_info.xsize * result.basic_info.ysize * 4) as usize
+    );
 
     let buffer = &mut result
         .frames
@@ -127,7 +137,7 @@ unsafe fn prepare_image_out_buffer(
         .data;
 
     buffer.resize(buffer_size as usize, 0);
-    try_dec!(JxlDecoderSetImageOutBuffer(
+    try_dec_fatal!(JxlDecoderSetImageOutBuffer(
         dec,
         pixel_format,
         buffer.as_mut_ptr() as *mut _,
@@ -137,25 +147,25 @@ unsafe fn prepare_image_out_buffer(
 }
 
 unsafe fn decode_loop(
-    dec: *mut JxlDecoderStruct,
+    progress: &mut DecodeProgress,
     data: impl BufRead,
     pixel_format: &JxlPixelFormat,
     event_flags: JxlDecoderStatus,
     max_frames: Option<usize>,
     allow_partial: bool,
-) -> Result<DecodeResult, &'static str> {
-    try_dec!(JxlDecoderSubscribeEvents(dec, event_flags as i32));
+) -> Result<(), JxlError> {
+    let dec = progress.raw.decoder;
+
+    try_dec_fatal!(JxlDecoderSubscribeEvents(dec, event_flags as i32));
 
     let mut buffer = ContiguousBuffer::new(data);
-    try_dec!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
-
-    let mut result = DecodeResult::default();
+    try_dec_fatal!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
 
     loop {
         let status = JxlDecoderProcessInput(dec);
 
         match status {
-            JXL_DEC_ERROR => return Err("Decoder error"),
+            JXL_DEC_ERROR => return Err(JxlError::Fatal),
             JXL_DEC_NEED_MORE_INPUT => {
                 let remaining = JxlDecoderReleaseInput(dec);
                 let consumed = buffer.len() - remaining;
@@ -163,35 +173,34 @@ unsafe fn decode_loop(
 
                 if buffer.more_buf().is_err() {
                     if allow_partial {
-                        try_dec!(JxlDecoderFlushImage(dec));
+                        progress.is_partial = true;
+                        try_dec_fatal!(JxlDecoderFlushImage(dec));
                         break;
                     } else {
-                        return Err("Couldn't read more buffer");
+                        return Err(JxlError::InputNotComplete);
                     }
                 }
 
-                try_dec!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
+                try_dec_fatal!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
             }
 
-            JXL_DEC_BASIC_INFO => read_basic_info(dec, &mut result)?,
+            JXL_DEC_BASIC_INFO => read_basic_info(dec, progress)?,
 
-            JXL_DEC_COLOR_ENCODING => read_color_encoding(dec, &mut result, pixel_format)?,
+            JXL_DEC_COLOR_ENCODING => read_color_encoding(dec, progress, pixel_format)?,
 
-            JXL_DEC_FRAME => prepare_frame(dec, &mut result)?,
+            JXL_DEC_FRAME => prepare_frame(dec, progress)?,
 
             JXL_DEC_NEED_PREVIEW_OUT_BUFFER => {
-                prepare_preview_out_buffer(dec, &mut result, pixel_format)?
+                prepare_preview_out_buffer(dec, progress, pixel_format)?
             }
 
             // Get the output buffer
-            JXL_DEC_NEED_IMAGE_OUT_BUFFER => {
-                prepare_image_out_buffer(dec, &mut result, pixel_format)?
-            }
+            JXL_DEC_NEED_IMAGE_OUT_BUFFER => prepare_image_out_buffer(dec, progress, pixel_format)?,
 
             JXL_DEC_FULL_IMAGE => {
                 // Nothing to do. Do not yet return. If the image is an animation, more
                 // full frames may be decoded.
-                if max_frames.is_some() && result.frames.len() == max_frames.unwrap() {
+                if max_frames.is_some() && progress.frames.len() == max_frames.unwrap() {
                     break;
                 }
             }
@@ -199,11 +208,11 @@ unsafe fn decode_loop(
                 // All decoding successfully finished.
                 break;
             }
-            _ => return Err("Unknown decoder status"),
+            _ => return Err(JxlError::Fatal), // Unknown status
         }
     }
 
-    Ok(result)
+    Ok(())
 }
 
 fn get_event_subscription_flags(dec: &Decoder) -> JxlDecoderStatus {
@@ -220,43 +229,25 @@ fn get_event_subscription_flags(dec: &Decoder) -> JxlDecoderStatus {
     flags
 }
 
-unsafe fn prepare_decoder(
-    dec: &Decoder,
+fn prepare_decoder(
+    keep_orientation: Option<bool>,
     dec_raw: *mut JxlDecoderStruct,
     runner: *mut c_void,
-) -> Result<(), &'static str> {
-    if let Some(keep_orientation) = dec.keep_orientation {
-        try_dec!(JxlDecoderSetKeepOrientation(
-            dec_raw,
-            keep_orientation as i32
-        ));
+) -> Result<(), JxlError> {
+    if let Some(keep_orientation) = keep_orientation {
+        try_dec_fatal!(unsafe { JxlDecoderSetKeepOrientation(dec_raw, keep_orientation as i32) });
     }
-    try_dec!(JxlDecoderSetParallelRunner(
-        dec_raw,
-        Some(JxlThreadParallelRunner),
-        runner
-    ));
+    try_dec_fatal!(unsafe {
+        JxlDecoderSetParallelRunner(dec_raw, Some(JxlThreadParallelRunner), runner)
+    });
     Ok(())
 }
 
 pub unsafe fn decode_oneshot(
     data: impl BufRead,
     dec: &Decoder,
-) -> Result<DecodeResult, &'static str> {
-    let dec_raw = JxlDecoderCreate(std::ptr::null());
-
-    // Multi-threaded parallel runner.
-    let runner = JxlThreadParallelRunnerCreate(
-        std::ptr::null(),
-        JxlThreadParallelRunnerDefaultNumWorkerThreads(),
-    );
-
-    let preparation = prepare_decoder(dec, dec_raw, runner);
-    if preparation.is_err() {
-        JxlThreadParallelRunnerDestroy(runner);
-        JxlDecoderDestroy(dec_raw);
-        return Err("Couldn't prepare the decoder");
-    }
+) -> Result<DecodeProgress, JxlError> {
+    let mut progress = DecodeProgress::new(dec.keep_orientation)?;
 
     let event_flags = get_event_subscription_flags(dec);
     // TODO: Support different pixel format
@@ -267,19 +258,16 @@ pub unsafe fn decode_oneshot(
         endianness: JXL_NATIVE_ENDIAN,
         align: 0,
     };
-    let result = decode_loop(
-        dec_raw,
+    decode_loop(
+        &mut progress,
         data,
         &pixel_format,
         event_flags,
         dec.max_frames,
         dec.allow_partial,
-    );
+    )?;
 
-    JxlThreadParallelRunnerDestroy(runner);
-    JxlDecoderDestroy(dec_raw);
-
-    result
+    Ok(progress)
 }
 
 #[derive(Default)]
@@ -303,22 +291,43 @@ impl Decoder {
         Self::default()
     }
 
-    pub fn decode(&self, data: &[u8]) -> Result<DecodeResult, &'static str> {
+    pub fn decode(&self, data: &[u8]) -> Result<DecodeProgress, JxlError> {
         // Just a helpful alias of decode_buffer for Vec which doesn't implement BufRead by itself
         self.decode_buffer(data)
     }
 
-    pub fn decode_file(&self, file: &File) -> Result<DecodeResult, &'static str> {
+    pub fn decode_file(&self, file: &File) -> Result<DecodeProgress, JxlError> {
         self.decode_buffer(BufReader::new(file))
     }
 
-    pub fn decode_buffer(&self, buffer: impl BufRead) -> Result<DecodeResult, &'static str> {
+    pub fn decode_buffer(&self, buffer: impl BufRead) -> Result<DecodeProgress, JxlError> {
         unsafe { decode_oneshot(buffer, self) }
+    }
+
+    // TODO:
+    // Each decode call creates a new JxlDecoder but that doesn't need to be the case.
+    // How about a static decode() receiving an option bag and returning a ongoing decode object including a live JxlDecoder, so that something like .proceed() can continue the decode?
+}
+
+struct DecodeRaw {
+    decoder: *mut JxlDecoderStruct,
+    parallel_runner: *mut c_void,
+}
+
+impl Drop for DecodeRaw {
+    fn drop(&mut self) {
+        unsafe {
+            JxlThreadParallelRunnerDestroy(self.parallel_runner);
+            JxlDecoderDestroy(self.decoder);
+        }
     }
 }
 
-#[derive(Default)]
-pub struct DecodeResult {
+pub struct DecodeProgress {
+    raw: DecodeRaw,
+
+    is_partial: bool,
+
     pub basic_info: BasicInfo,
     /** Can be empty unless `need_color_profile` is specified */
     pub color_profile: Vec<u8>,
@@ -326,6 +335,40 @@ pub struct DecodeResult {
     pub preview: Vec<u8>,
     /** Can be empty if neither of `need_frame_header` nor `need_frame` is specified */
     pub frames: Vec<Frame>,
+}
+
+impl DecodeProgress {
+    pub fn new(keep_orientation: Option<bool>) -> Result<DecodeProgress, JxlError> {
+        let decoder = unsafe { JxlDecoderCreate(std::ptr::null()) };
+        let parallel_runner = unsafe {
+            JxlThreadParallelRunnerCreate(
+                std::ptr::null(),
+                JxlThreadParallelRunnerDefaultNumWorkerThreads(),
+            )
+        };
+
+        prepare_decoder(keep_orientation, decoder, parallel_runner)?;
+
+        Ok(DecodeProgress {
+            raw: DecodeRaw {
+                decoder,
+                parallel_runner,
+            },
+
+            is_partial: false,
+
+            basic_info: BasicInfo::default(),
+            color_profile: Vec::new(),
+            preview: Vec::new(),
+            frames: Vec::new(),
+        })
+    }
+
+    pub fn is_partial(&self) -> bool {
+        self.is_partial
+    }
+
+    pub fn proceed(&self) {}
 }
 
 #[derive(Default)]
