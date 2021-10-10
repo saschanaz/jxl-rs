@@ -104,38 +104,6 @@ unsafe fn prepare_preview_out_buffer(
     Ok(())
 }
 
-unsafe fn prepare_dc_out_buffer(
-    dec: *mut JxlDecoderStruct,
-    result: &mut DecodeResult,
-    pixel_format: &JxlPixelFormat,
-) -> Result<(), &'static str> {
-    let mut buffer_size = 0usize;
-    try_dec!(JxlDecoderDCOutBufferSize(
-        dec,
-        pixel_format,
-        &mut buffer_size
-    ));
-
-    if buffer_size > (result.basic_info.xsize * result.basic_info.ysize * 4) as usize {
-        return Err("DC out buffer size is unexpectedly larger than the full buffer size");
-    }
-
-    let buffer = &mut result
-        .frames
-        .last_mut()
-        .expect("Frames vector is unexpectedly empty")
-        .dc;
-
-    buffer.resize(buffer_size as usize, 0);
-    try_dec!(JxlDecoderSetDCOutBuffer(
-        dec,
-        pixel_format,
-        buffer.as_mut_ptr() as *mut _,
-        buffer_size,
-    ));
-    Ok(())
-}
-
 unsafe fn prepare_image_out_buffer(
     dec: *mut JxlDecoderStruct,
     result: &mut DecodeResult,
@@ -215,14 +183,11 @@ unsafe fn decode_loop(
                 prepare_preview_out_buffer(dec, &mut result, pixel_format)?
             }
 
-            JXL_DEC_NEED_DC_OUT_BUFFER => prepare_dc_out_buffer(dec, &mut result, pixel_format)?,
-
             // Get the output buffer
             JXL_DEC_NEED_IMAGE_OUT_BUFFER => {
                 prepare_image_out_buffer(dec, &mut result, pixel_format)?
             }
 
-            JXL_DEC_DC_IMAGE => continue,
             JXL_DEC_FULL_IMAGE => {
                 // Nothing to do. Do not yet return. If the image is an animation, more
                 // full frames may be decoded.
@@ -248,9 +213,6 @@ fn get_event_subscription_flags(dec: &Decoder) -> JxlDecoderStatus {
     }
     if dec.need_optional_preview {
         flags |= JXL_DEC_PREVIEW_IMAGE;
-    }
-    if dec.need_optional_dc_frame {
-        flags |= JXL_DEC_FRAME | JXL_DEC_DC_IMAGE;
     }
     if !dec.no_full_frame {
         flags |= JXL_DEC_FRAME | JXL_DEC_FULL_IMAGE;
@@ -327,7 +289,6 @@ pub struct Decoder {
     // pub pixel_format: Option<JxlPixelFormat>,
     pub need_color_profile: bool,
     pub need_optional_preview: bool,
-    pub need_optional_dc_frame: bool,
     pub no_full_frame: bool,
 
     /** Specify when you need at most N frames */
@@ -363,7 +324,7 @@ pub struct DecodeResult {
     pub color_profile: Vec<u8>,
     /** Can be empty unless `need_optional_preview` is specified */
     pub preview: Vec<u8>,
-    /** Can be empty if neither of `need_frame_header`, `need_dc_frame`, nor `need_frame` is specified */
+    /** Can be empty if neither of `need_frame_header` nor `need_frame` is specified */
     pub frames: Vec<Frame>,
 }
 
@@ -374,8 +335,6 @@ pub struct Frame {
     pub timecode: u32,
     pub is_last: bool,
 
-    /** Can be empty unless `need_dc_frame` is specified *and* there is a DC frame. */
-    pub dc: Vec<u8>,
     /** Can be empty when `no_full_frame` is specified */
     pub data: Vec<u8>,
 }
