@@ -195,7 +195,6 @@ unsafe fn decode_loop(
 
                 if buffer.more_buf().is_err() {
                     if allow_partial {
-                        prepare_image_out_buffer(dec, &mut result, pixel_format)?;
                         try_dec!(JxlDecoderFlushImage(dec));
                         break;
                     } else {
