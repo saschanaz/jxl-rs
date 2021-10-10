@@ -12,13 +12,13 @@ use libjxl_sys::*;
 pub enum JxlError {
     AllocationFailed,
     InputNotComplete,
-    Fatal,
+    AlreadyFinished,
 }
 
 macro_rules! try_dec_fatal {
     ($left:expr) => {{
         if $left != JXL_DEC_SUCCESS {
-            return Err(JxlError::Fatal);
+            panic!("A fatal error happened in kagamijxl");
         }
     }};
 }
@@ -74,7 +74,7 @@ unsafe fn prepare_frame(
     name_vec.pop(); // The string ends with null which is redundant in Rust
 
     let frame = Frame {
-        name: String::from_utf8(name_vec).map_err(|_| JxlError::Fatal)?,
+        name: String::from_utf8_lossy(&name_vec[..]).to_string(),
         duration: header.duration,
         timecode: header.timecode,
         is_last: header.is_last != 0,
@@ -165,7 +165,6 @@ unsafe fn decode_loop(
         let status = JxlDecoderProcessInput(dec);
 
         match status {
-            JXL_DEC_ERROR => return Err(JxlError::Fatal),
             JXL_DEC_NEED_MORE_INPUT => {
                 let remaining = JxlDecoderReleaseInput(dec);
                 let consumed = buffer.len() - remaining;
@@ -209,7 +208,9 @@ unsafe fn decode_loop(
                 progress.is_partial = false;
                 break;
             }
-            _ => return Err(JxlError::Fatal), // Unknown status
+
+            JXL_DEC_ERROR => panic!("Decoder reported an unexpected error during processing"),
+            _ => panic!("Unknown JXL decoding status found: {}", status),
         }
     }
 
@@ -341,6 +342,18 @@ pub struct DecodeProgress {
     pub frames: Vec<Frame>,
 }
 
+impl Debug for DecodeProgress {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DecodeProgress")
+            .field("unread_buffer", &self.unread_buffer)
+            .field("is_partial", &self.is_partial)
+            .field("basic_info", &self.basic_info)
+            .field("color_profile", &self.color_profile)
+            .field("preview", &self.preview)
+            .finish()
+    }
+}
+
 impl DecodeProgress {
     pub fn new(keep_orientation: Option<bool>) -> Result<DecodeProgress, JxlError> {
         let decoder = unsafe { JxlDecoderCreate(std::ptr::null()) };
@@ -379,6 +392,10 @@ impl DecodeProgress {
         allow_partial: bool,
         stop_on_frame: bool,
     ) -> Result<(), JxlError> {
+        if !self.is_partial {
+            return Err(JxlError::AlreadyFinished);
+        }
+
         // TODO: Support different pixel format
         // Not sure how to type the output vector properly
         let pixel_format = JxlPixelFormat {
