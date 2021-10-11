@@ -17,13 +17,13 @@ pub enum JxlError {
 
 macro_rules! try_dec_fatal {
     ($left:expr) => {{
-        if $left != JXL_DEC_SUCCESS {
+        if unsafe { $left } != JXL_DEC_SUCCESS {
             panic!("A fatal error happened in kagamijxl");
         }
     }};
 }
 
-unsafe fn read_basic_info(
+fn read_basic_info(
     dec: *mut JxlDecoderStruct,
     result: &mut DecodeProgress,
 ) -> Result<(), JxlError> {
@@ -32,7 +32,7 @@ unsafe fn read_basic_info(
     Ok(())
 }
 
-unsafe fn read_color_encoding(
+fn read_color_encoding(
     dec: *mut JxlDecoderStruct,
     result: &mut DecodeProgress,
     pixel_format: &JxlPixelFormat,
@@ -43,7 +43,7 @@ unsafe fn read_color_encoding(
         dec,
         pixel_format,
         JXL_COLOR_PROFILE_TARGET_DATA,
-        &mut icc_size
+        &mut icc_size,
     ));
     result.color_profile.resize(icc_size, 0);
     try_dec_fatal!(JxlDecoderGetColorAsICCProfile(
@@ -51,15 +51,12 @@ unsafe fn read_color_encoding(
         pixel_format,
         JXL_COLOR_PROFILE_TARGET_DATA,
         result.color_profile.as_mut_ptr(),
-        icc_size
+        icc_size,
     ));
     Ok(())
 }
 
-unsafe fn prepare_frame(
-    dec: *mut JxlDecoderStruct,
-    result: &mut DecodeProgress,
-) -> Result<(), JxlError> {
+fn prepare_frame(dec: *mut JxlDecoderStruct, result: &mut DecodeProgress) -> Result<(), JxlError> {
     let mut header = JxlFrameHeader::default();
     try_dec_fatal!(JxlDecoderGetFrameHeader(dec, &mut header));
 
@@ -84,7 +81,7 @@ unsafe fn prepare_frame(
     Ok(())
 }
 
-unsafe fn prepare_preview_out_buffer(
+fn prepare_preview_out_buffer(
     dec: *mut JxlDecoderStruct,
     result: &mut DecodeProgress,
     pixel_format: &JxlPixelFormat,
@@ -113,7 +110,7 @@ unsafe fn prepare_preview_out_buffer(
     Ok(())
 }
 
-unsafe fn prepare_image_out_buffer(
+fn prepare_image_out_buffer(
     dec: *mut JxlDecoderStruct,
     result: &mut DecodeProgress,
     pixel_format: &JxlPixelFormat,
@@ -146,7 +143,7 @@ unsafe fn prepare_image_out_buffer(
     Ok(())
 }
 
-unsafe fn decode_loop(
+fn decode_loop(
     progress: &mut DecodeProgress,
     data: impl BufRead,
     pixel_format: &JxlPixelFormat,
@@ -160,11 +157,11 @@ unsafe fn decode_loop(
     try_dec_fatal!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
 
     loop {
-        let status = JxlDecoderProcessInput(dec);
+        let status = unsafe { JxlDecoderProcessInput(dec) };
 
         match status {
             JXL_DEC_NEED_MORE_INPUT => {
-                let remaining = JxlDecoderReleaseInput(dec);
+                let remaining = unsafe { JxlDecoderReleaseInput(dec) };
                 let consumed = buffer.len() - remaining;
                 buffer.consume(consumed);
 
@@ -197,7 +194,7 @@ unsafe fn decode_loop(
                 // Nothing to do. Do not yet return. If the image is an animation, more
                 // full frames may be decoded.
                 if stop_on_frame {
-                    JxlDecoderReleaseInput(dec);
+                    unsafe { JxlDecoderReleaseInput(dec) };
                     break;
                 }
             }
@@ -237,18 +234,20 @@ fn prepare_decoder(
     runner: *mut c_void,
 ) -> Result<(), JxlError> {
     if let Some(keep_orientation) = keep_orientation {
-        try_dec_fatal!(unsafe { JxlDecoderSetKeepOrientation(dec_raw, keep_orientation as i32) });
+        try_dec_fatal!(JxlDecoderSetKeepOrientation(
+            dec_raw,
+            keep_orientation as i32
+        ));
     }
-    try_dec_fatal!(unsafe {
-        JxlDecoderSetParallelRunner(dec_raw, Some(JxlThreadParallelRunner), runner)
-    });
+    try_dec_fatal!(JxlDecoderSetParallelRunner(
+        dec_raw,
+        Some(JxlThreadParallelRunner),
+        runner
+    ));
     Ok(())
 }
 
-pub unsafe fn decode_oneshot(
-    data: impl BufRead,
-    dec: &Decoder,
-) -> Result<DecodeProgress, JxlError> {
+pub fn decode_oneshot(data: impl BufRead, dec: &Decoder) -> Result<DecodeProgress, JxlError> {
     let mut progress = DecodeProgress::new(dec.keep_orientation)?;
 
     let event_flags = get_event_subscription_flags(dec);
@@ -307,7 +306,7 @@ impl Decoder {
     }
 
     pub fn decode_buffer(&self, buffer: impl BufRead) -> Result<DecodeProgress, JxlError> {
-        unsafe { decode_oneshot(buffer, self) }
+        decode_oneshot(buffer, self)
     }
 }
 
@@ -399,7 +398,7 @@ impl DecodeProgress {
             endianness: JXL_NATIVE_ENDIAN,
             align: 0,
         };
-        unsafe { decode_loop(self, data, &pixel_format, stop_on_frame, allow_partial)? };
+        decode_loop(self, data, &pixel_format, stop_on_frame, allow_partial)?;
         Ok(())
     }
 }
