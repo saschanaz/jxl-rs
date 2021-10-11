@@ -343,11 +343,8 @@ pub struct DecodeProgress {
 impl Debug for DecodeProgress {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DecodeProgress")
-            .field("unread_buffer", &self.unread_buffer)
             .field("is_partial", &self.is_partial)
             .field("basic_info", &self.basic_info)
-            .field("color_profile", &self.color_profile)
-            .field("preview", &self.preview)
             .finish()
     }
 }
