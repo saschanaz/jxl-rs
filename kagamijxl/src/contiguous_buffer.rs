@@ -28,7 +28,7 @@ where
         }
     }
 
-    pub fn more_buf(&mut self) -> Result<(), std::io::Error> {
+    fn copy_unread(&mut self) {
         if self.contiguous.is_empty() {
             // copy before getting more buffer
             // if self.contiguous is non-empty it means it's already copied
@@ -37,6 +37,10 @@ where
             self.position = 0;
         }
         self.buffer.consume_all();
+    }
+
+    pub fn more_buf(&mut self) -> Result<(), std::io::Error> {
+        self.copy_unread();
         let data = self.buffer.fill_buf()?;
         if data.is_empty() {
             return Err(std::io::Error::new(
@@ -77,7 +81,8 @@ where
         self.as_slice().len()
     }
 
-    pub fn take_unread(self) -> Vec<u8> {
+    pub fn take_unread(mut self) -> Vec<u8> {
+        self.copy_unread();
         self.contiguous
     }
 }

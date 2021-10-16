@@ -154,13 +154,6 @@ fn decode_loop(
 
     let mut buffer =
         ContiguousBuffer::new(progress.unread_buffer.take().unwrap_or_else(Vec::new), data);
-    if buffer.more_buf().is_err() {
-        return if allow_partial {
-            Ok(())
-        } else {
-            Err(JxlError::InputNotComplete)
-        };
-    }
 
     try_dec_fatal!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
 
@@ -198,8 +191,10 @@ fn decode_loop(
             JXL_DEC_NEED_IMAGE_OUT_BUFFER => prepare_image_out_buffer(dec, progress, pixel_format)?,
 
             JXL_DEC_FULL_IMAGE => {
-                if stop_on_frame {
-                    unsafe { JxlDecoderReleaseInput(dec) };
+                if stop_on_frame && !progress.frames.last().unwrap().is_last {
+                    let remaining = unsafe { JxlDecoderReleaseInput(dec) };
+                    let consumed = buffer.len() - remaining;
+                    buffer.consume(consumed);
                     break;
                 }
             }

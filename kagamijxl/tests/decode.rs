@@ -149,6 +149,35 @@ fn test_decode_animation_first() {
 }
 
 #[test]
+fn test_decode_animation_step() {
+    let data = get_sample_animation();
+
+    let mut buffer = BufReader::new(&data[..]);
+
+    let mut decoder = Decoder::default();
+    decoder.stop_on_frame = true;
+
+    let mut result = decoder
+        .decode_buffer(&mut buffer)
+        .expect("Failed to decode the sample image");
+
+    assert_eq!(result.frames.len(), 1);
+    assert_ne!(result.frames[0].data.len(), 0);
+
+    for i in 2..=25 {
+        result
+            .proceed(&mut buffer, false, true)
+            .expect(format!("Should be able to proceed: frame {}", i).as_str());
+        assert_eq!(result.frames.len(), i);
+        if i == 25 {
+            assert!(!result.is_partial());
+        } else {
+            assert!(result.is_partial());
+        }
+    }
+}
+
+#[test]
 fn test_decode_partial() {
     let data = get_sample_image();
 
