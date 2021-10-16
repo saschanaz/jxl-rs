@@ -180,6 +180,33 @@ fn test_decode_partial() {
 }
 
 #[test]
+fn test_decode_partial_flush() {
+    let data = get_sample_image();
+
+    let mut decoder = Decoder::default();
+    decoder.allow_partial = true;
+
+    let mut result = decoder
+        .decode(&data[..40960])
+        .expect("Failed to decode the sample image");
+
+    assert!(result.is_partial());
+    assert_eq!(result.frames.len(), 1);
+
+    {
+        let first_frame_data = &result.frames[0].data;
+        assert_ne!(first_frame_data.len(), 0);
+        assert_eq!(first_frame_data[first_frame_data.len() - 10..], [0; 10]);
+    }
+
+    result.flush();
+    {
+        let first_frame_data = &result.frames[0].data;
+        assert_ne!(first_frame_data[first_frame_data.len() - 10..], [0; 10]);
+    }
+}
+
+#[test]
 fn test_decode_partial_buffer() {
     let data = get_sample_image();
 

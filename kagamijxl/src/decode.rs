@@ -175,7 +175,6 @@ fn decode_loop(
 
                 if buffer.more_buf().is_err() {
                     if allow_partial {
-                        try_dec_fatal!(JxlDecoderFlushImage(dec));
                         break;
                     } else {
                         return Err(JxlError::InputNotComplete);
@@ -406,6 +405,10 @@ impl DecodeProgress {
         };
         decode_loop(self, data, &pixel_format, stop_on_frame, allow_partial)?;
         Ok(())
+    }
+
+    pub fn flush(&mut self) {
+        unsafe { JxlDecoderFlushImage(self.raw.decoder) };
     }
 }
 
