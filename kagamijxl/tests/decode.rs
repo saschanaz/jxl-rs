@@ -1,4 +1,4 @@
-use std::{fs::File, path::PathBuf};
+use std::{fs::File, io::BufReader, path::PathBuf};
 
 use kagamijxl::{decode_memory, Decoder, JxlError};
 use libjxl_sys::JXL_ORIENT_IDENTITY;
@@ -156,8 +156,15 @@ fn test_decode_partial() {
     decoder.allow_partial = true;
 
     let mut result = decoder
-        .decode(&data[..40960])
+        .decode(&data[..3])
         .expect("Failed to decode the sample image");
+
+    assert!(result.is_partial());
+    assert_eq!(result.frames.len(), 0);
+
+    result
+        .proceed(&data[3..40960], true, false)
+        .expect("Should be able to proceed");
 
     assert!(result.is_partial());
     assert_eq!(result.frames.len(), 1);
@@ -170,6 +177,25 @@ fn test_decode_partial() {
 
     let err = result.proceed(&[0xff][..], true, false).unwrap_err();
     assert!(matches!(err, JxlError::AlreadyFinished));
+}
+
+#[test]
+fn test_decode_partial_buffer() {
+    let data = get_sample_image();
+
+    let mut buffer = BufReader::new(&data[..40960]);
+
+    let mut decoder = Decoder::default();
+    decoder.allow_partial = true;
+
+    let result = decoder
+        .decode_buffer(&mut buffer)
+        .expect("Failed to decode the sample image");
+
+    assert!(result.is_partial());
+    assert_eq!(result.frames.len(), 1);
+    assert_ne!(result.frames[0].data.len(), 0);
+    assert_eq!(buffer.buffer().len(), 0, "Buffer should be consumed");
 }
 
 #[test]
