@@ -1,6 +1,6 @@
 use std::{fs::File, io::BufReader, path::PathBuf};
 
-use kagamijxl::{decode_memory, Decoder, JxlError};
+use kagamijxl::{decode_memory, Decoder, JxlDecodeError};
 use libjxl_sys::JXL_ORIENT_IDENTITY;
 
 const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
@@ -205,7 +205,7 @@ fn test_decode_partial() {
     assert!(!result.is_partial());
 
     let err = result.proceed(&[0xff][..], true, false).unwrap_err();
-    assert!(matches!(err, JxlError::AlreadyFinished));
+    assert!(matches!(err, JxlDecodeError::AlreadyFinished));
 }
 
 #[test]
@@ -259,11 +259,11 @@ fn test_decode_partial_fail() {
     let data = get_sample_image();
 
     let err = decode_memory(&data[..40960]).unwrap_err();
-    assert!(matches!(err, JxlError::InputNotComplete));
+    assert!(matches!(err, JxlDecodeError::InputNotComplete));
 }
 
 #[test]
 fn test_decode_partial_fail_buffer() {
     let err = decode_memory(&[0xff, 0x0a]).unwrap_err();
-    assert!(matches!(err, JxlError::InputNotComplete));
+    assert!(matches!(err, JxlDecodeError::InputNotComplete));
 }

@@ -1,4 +1,4 @@
-use kagamijxl::{decode_memory, encode_memory, BitmapFrame, Encoder, JpegFrame};
+use kagamijxl::{decode_memory, encode_memory, BitmapFrame, Encoder, JpegFrame, JxlEncodeError};
 use std::path::PathBuf;
 
 #[rustfmt::skip]
@@ -111,4 +111,23 @@ fn test_encode_jpeg_frame() {
     assert_eq!(basic_info.ysize, 533);
     assert_eq!(result.frames.len(), 1);
     assert_eq!(result.frames[0].data[0], 57);
+}
+
+#[test]
+fn test_encode_unsupported_values() {
+    let mut encoder = Encoder::default();
+    encoder.distance = Some(99f32);
+    encoder.basic_info.xsize = 3;
+    encoder.basic_info.ysize = 3;
+
+    let err = encoder.encode(&RGBA_DATA).unwrap_err();
+    assert!(matches!(err, JxlEncodeError::UnsupportedValue(_)));
+
+    encoder = Encoder::default();
+    encoder.distance = Some(99f32);
+    encoder.basic_info.xsize = 3;
+    encoder.basic_info.ysize = 3;
+
+    let err = encoder.encode(&RGBA_DATA).unwrap_err();
+    assert!(matches!(err, JxlEncodeError::UnsupportedValue(_)));
 }

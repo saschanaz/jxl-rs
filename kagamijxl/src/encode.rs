@@ -3,14 +3,27 @@ use std::{ffi::c_void, os::raw::c_int};
 use libjxl_sys::*;
 
 macro_rules! try_enc {
-    ($left:expr) => {{
-        if $left != JXL_ENC_SUCCESS {
-            return Err("Encoder failed");
+    ($left:expr, $right:expr) => {{
+        if unsafe { $left } != JXL_ENC_SUCCESS {
+            return Err($right);
         }
     }};
 }
 
-unsafe fn encode_loop(enc: *mut JxlEncoderStruct) -> Result<Vec<u8>, &'static str> {
+macro_rules! try_enc_fatal {
+    ($left:expr) => {{
+        if unsafe { $left } != JXL_ENC_SUCCESS {
+            panic!("A fatal error occurred in kagamijxl::Encoder");
+        }
+    }};
+}
+
+#[derive(Debug)]
+pub enum JxlEncodeError {
+    UnsupportedValue(String),
+}
+
+unsafe fn encode_loop(enc: *mut JxlEncoderStruct) -> Vec<u8> {
     let mut compressed: Vec<u8> = Vec::new();
     compressed.resize(64, 0);
     let mut next_out = compressed.as_mut_ptr();
@@ -26,31 +39,33 @@ unsafe fn encode_loop(enc: *mut JxlEncoderStruct) -> Result<Vec<u8>, &'static st
             }
             JXL_ENC_SUCCESS => {
                 compressed.resize(compressed.len() - avail_out, 0);
-                return Ok(compressed);
+                return compressed;
             }
-            _ => return Err("JxlEncoderProcessOutput failed"),
+
+            JXL_ENC_ERROR => panic!("Encoder reported an unexpected error during processing"),
+            _ => panic!("Unknown JXL encoding status found: {}", process_result),
         }
     }
 }
 
-unsafe fn prepare_encoder(
+fn prepare_encoder(
     enc: &Encoder,
     enc_raw: *mut JxlEncoderStruct,
     basic_info: &JxlBasicInfo,
     runner: *mut c_void,
     frame: &dyn InputFrame,
-) -> Result<(), &'static str> {
-    try_enc!(JxlEncoderSetParallelRunner(
+) -> Result<(), JxlEncodeError> {
+    try_enc_fatal!(JxlEncoderSetParallelRunner(
         enc_raw,
         Some(JxlThreadParallelRunner),
         runner
     ));
 
-    try_enc!(JxlEncoderSetBasicInfo(enc_raw, basic_info));
+    try_enc_fatal!(JxlEncoderSetBasicInfo(enc_raw, basic_info));
 
     let mut color_encoding = JxlColorEncoding::default();
-    JxlColorEncodingSetToSRGB(&mut color_encoding, 0);
-    try_enc!(JxlEncoderSetColorEncoding(enc_raw, &color_encoding));
+    unsafe { JxlColorEncodingSetToSRGB(&mut color_encoding, 0) };
+    try_enc_fatal!(JxlEncoderSetColorEncoding(enc_raw, &color_encoding));
 
     let options = enc.create_options(enc_raw)?;
 
@@ -62,7 +77,7 @@ unsafe fn prepare_encoder(
                 endianness: JXL_NATIVE_ENDIAN,
                 align: 0,
             };
-            try_enc!(JxlEncoderAddImageFrame(
+            try_enc_fatal!(JxlEncoderAddImageFrame(
                 options,
                 &pixel_format,
                 frame.get_data().as_ptr() as *mut std::ffi::c_void,
@@ -70,8 +85,8 @@ unsafe fn prepare_encoder(
             ));
         }
         FrameType::Jpeg => {
-            try_enc!(JxlEncoderStoreJPEGMetadata(enc_raw, 1));
-            try_enc!(JxlEncoderAddJPEGFrame(
+            try_enc_fatal!(JxlEncoderStoreJPEGMetadata(enc_raw, 1));
+            try_enc_fatal!(JxlEncoderAddJPEGFrame(
                 options,
                 frame.get_data().as_ptr(),
                 frame.get_data().len(),
@@ -85,7 +100,7 @@ unsafe fn prepare_encoder(
 pub unsafe fn encode_oneshot(
     frame: &dyn InputFrame,
     enc: &Encoder,
-) -> Result<Vec<u8>, &'static str> {
+) -> Result<Vec<u8>, JxlEncodeError> {
     let runner = JxlThreadParallelRunnerCreate(
         std::ptr::null(),
         JxlThreadParallelRunnerDefaultNumWorkerThreads(),
@@ -93,19 +108,14 @@ pub unsafe fn encode_oneshot(
 
     let enc_raw = JxlEncoderCreate(std::ptr::null());
 
-    let preparation = prepare_encoder(enc, enc_raw, &enc.basic_info, runner, frame);
-    if preparation.is_err() {
-        JxlThreadParallelRunnerDestroy(runner);
-        JxlEncoderDestroy(enc_raw);
-        return Err("Couldn't prepare the encoder");
-    }
+    prepare_encoder(enc, enc_raw, &enc.basic_info, runner, frame)?;
 
     let result = encode_loop(enc_raw);
 
     JxlThreadParallelRunnerDestroy(runner);
     JxlEncoderDestroy(enc_raw);
 
-    result
+    Ok(result)
 }
 
 pub enum FrameType {
@@ -159,31 +169,40 @@ impl Encoder {
         Self::default()
     }
 
-    unsafe fn create_options(
+    fn create_options(
         &self,
         enc_raw: *mut JxlEncoderStruct,
-    ) -> Result<*mut JxlEncoderOptionsStruct, &'static str> {
-        let options = JxlEncoderOptionsCreate(enc_raw, std::ptr::null());
+    ) -> Result<*mut JxlEncoderOptionsStruct, JxlEncodeError> {
+        let options = unsafe { JxlEncoderOptionsCreate(enc_raw, std::ptr::null()) };
 
         if let Some(lossless) = self.lossless {
-            try_enc!(JxlEncoderOptionsSetLossless(options, lossless as i32));
+            try_enc_fatal!(JxlEncoderOptionsSetLossless(options, lossless as i32));
         }
         if let Some(effort) = self.effort {
-            try_enc!(JxlEncoderOptionsSetEffort(options, effort as c_int));
+            try_enc!(
+                JxlEncoderOptionsSetEffort(options, effort as c_int),
+                JxlEncodeError::UnsupportedValue(format!("Effort value {} is unsupported", effort))
+            );
         }
         if let Some(distance) = self.distance {
-            try_enc!(JxlEncoderOptionsSetDistance(options, distance));
+            try_enc!(
+                JxlEncoderOptionsSetDistance(options, distance),
+                JxlEncodeError::UnsupportedValue(format!(
+                    "Distance value {} is unsupported",
+                    distance
+                ))
+            );
         }
 
         Ok(options)
     }
 
-    pub fn encode(&self, data: &[u8]) -> Result<Vec<u8>, &'static str> {
+    pub fn encode(&self, data: &[u8]) -> Result<Vec<u8>, JxlEncodeError> {
         let frame = BitmapFrame { data };
         self.encode_frame(&frame)
     }
 
-    pub fn encode_frame(&self, frame: &dyn InputFrame) -> Result<Vec<u8>, &'static str> {
+    pub fn encode_frame(&self, frame: &dyn InputFrame) -> Result<Vec<u8>, JxlEncodeError> {
         unsafe { encode_oneshot(frame, self) }
     }
 }

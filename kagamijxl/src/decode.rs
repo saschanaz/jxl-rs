@@ -9,7 +9,7 @@ use crate::{contiguous_buffer::ContiguousBuffer, BasicInfo};
 use libjxl_sys::*;
 
 #[derive(Debug)]
-pub enum JxlError {
+pub enum JxlDecodeError {
     AllocationFailed,
     InputNotComplete,
     AlreadyFinished,
@@ -18,7 +18,7 @@ pub enum JxlError {
 macro_rules! try_dec_fatal {
     ($left:expr) => {{
         if unsafe { $left } != JXL_DEC_SUCCESS {
-            panic!("A fatal error happened in kagamijxl");
+            panic!("A fatal error occurred in kagamijxl::Decoder");
         }
     }};
 }
@@ -26,7 +26,7 @@ macro_rules! try_dec_fatal {
 fn read_basic_info(
     dec: *mut JxlDecoderStruct,
     result: &mut DecodeProgress,
-) -> Result<(), JxlError> {
+) -> Result<(), JxlDecodeError> {
     // Get the basic info
     try_dec_fatal!(JxlDecoderGetBasicInfo(dec, &mut result.basic_info));
     Ok(())
@@ -36,7 +36,7 @@ fn read_color_encoding(
     dec: *mut JxlDecoderStruct,
     result: &mut DecodeProgress,
     pixel_format: &JxlPixelFormat,
-) -> Result<(), JxlError> {
+) -> Result<(), JxlDecodeError> {
     // Get the ICC color profile of the pixel data
     let mut icc_size = 0usize;
     try_dec_fatal!(JxlDecoderGetICCProfileSize(
@@ -56,7 +56,10 @@ fn read_color_encoding(
     Ok(())
 }
 
-fn prepare_frame(dec: *mut JxlDecoderStruct, result: &mut DecodeProgress) -> Result<(), JxlError> {
+fn prepare_frame(
+    dec: *mut JxlDecoderStruct,
+    result: &mut DecodeProgress,
+) -> Result<(), JxlDecodeError> {
     let mut header = JxlFrameHeader::default();
     try_dec_fatal!(JxlDecoderGetFrameHeader(dec, &mut header));
 
@@ -85,7 +88,7 @@ fn prepare_preview_out_buffer(
     dec: *mut JxlDecoderStruct,
     result: &mut DecodeProgress,
     pixel_format: &JxlPixelFormat,
-) -> Result<(), JxlError> {
+) -> Result<(), JxlDecodeError> {
     let mut buffer_size = 0usize;
     try_dec_fatal!(JxlDecoderPreviewOutBufferSize(
         dec,
@@ -114,7 +117,7 @@ fn prepare_image_out_buffer(
     dec: *mut JxlDecoderStruct,
     result: &mut DecodeProgress,
     pixel_format: &JxlPixelFormat,
-) -> Result<(), JxlError> {
+) -> Result<(), JxlDecodeError> {
     let mut buffer_size = 0usize;
     try_dec_fatal!(JxlDecoderImageOutBufferSize(
         dec,
@@ -149,7 +152,7 @@ fn decode_loop(
     pixel_format: &JxlPixelFormat,
     stop_on_frame: bool,
     allow_partial: bool,
-) -> Result<(), JxlError> {
+) -> Result<(), JxlDecodeError> {
     let dec = progress.raw.decoder;
 
     let mut buffer =
@@ -170,7 +173,7 @@ fn decode_loop(
                     if allow_partial {
                         break;
                     } else {
-                        return Err(JxlError::InputNotComplete);
+                        return Err(JxlDecodeError::InputNotComplete);
                     }
                 }
 
@@ -232,7 +235,7 @@ fn prepare_decoder(
     keep_orientation: Option<bool>,
     dec_raw: *mut JxlDecoderStruct,
     runner: *mut c_void,
-) -> Result<(), JxlError> {
+) -> Result<(), JxlDecodeError> {
     if let Some(keep_orientation) = keep_orientation {
         try_dec_fatal!(JxlDecoderSetKeepOrientation(
             dec_raw,
@@ -247,7 +250,7 @@ fn prepare_decoder(
     Ok(())
 }
 
-pub fn decode_oneshot(data: impl BufRead, dec: &Decoder) -> Result<DecodeProgress, JxlError> {
+pub fn decode_oneshot(data: impl BufRead, dec: &Decoder) -> Result<DecodeProgress, JxlDecodeError> {
     let mut progress = DecodeProgress::new(dec.keep_orientation)?;
 
     let event_flags = get_event_subscription_flags(dec);
@@ -296,16 +299,16 @@ impl Decoder {
         Self::default()
     }
 
-    pub fn decode(&self, data: &[u8]) -> Result<DecodeProgress, JxlError> {
+    pub fn decode(&self, data: &[u8]) -> Result<DecodeProgress, JxlDecodeError> {
         // Just a helpful alias of decode_buffer for Vec which doesn't implement BufRead by itself
         self.decode_buffer(data)
     }
 
-    pub fn decode_file(&self, file: &File) -> Result<DecodeProgress, JxlError> {
+    pub fn decode_file(&self, file: &File) -> Result<DecodeProgress, JxlDecodeError> {
         self.decode_buffer(BufReader::new(file))
     }
 
-    pub fn decode_buffer(&self, buffer: impl BufRead) -> Result<DecodeProgress, JxlError> {
+    pub fn decode_buffer(&self, buffer: impl BufRead) -> Result<DecodeProgress, JxlDecodeError> {
         decode_oneshot(buffer, self)
     }
 }
@@ -349,7 +352,7 @@ impl Debug for DecodeProgress {
 }
 
 impl DecodeProgress {
-    pub fn new(keep_orientation: Option<bool>) -> Result<DecodeProgress, JxlError> {
+    pub fn new(keep_orientation: Option<bool>) -> Result<DecodeProgress, JxlDecodeError> {
         let decoder = unsafe { JxlDecoderCreate(std::ptr::null()) };
         let parallel_runner = unsafe {
             JxlThreadParallelRunnerCreate(
@@ -385,9 +388,9 @@ impl DecodeProgress {
         data: impl BufRead,
         allow_partial: bool,
         stop_on_frame: bool,
-    ) -> Result<(), JxlError> {
+    ) -> Result<(), JxlDecodeError> {
         if !self.is_partial {
-            return Err(JxlError::AlreadyFinished);
+            return Err(JxlDecodeError::AlreadyFinished);
         }
 
         // TODO: Support different pixel format
