@@ -226,7 +226,10 @@ fn get_event_subscription_flags(dec: &Decoder) -> JxlDecoderStatus {
         flags |= JXL_DEC_PREVIEW_IMAGE;
     }
     if !dec.no_full_frame {
-        flags |= JXL_DEC_FRAME | JXL_DEC_FULL_IMAGE;
+        flags |= JXL_DEC_FRAME;
+    }
+    if !dec.no_full_image && !dec.no_full_frame {
+        flags |= JXL_DEC_FULL_IMAGE;
     }
     flags
 }
@@ -283,9 +286,14 @@ pub struct Decoder {
     pub keep_orientation: Option<bool>,
 
     // pub pixel_format: Option<JxlPixelFormat>,
+    /** Reads color profile into `DecodeProgres::color_profile` when set to true */
     pub need_color_profile: bool,
+    /** Tries reading preview image into `DecodeProgress::preview` when set to true */
     pub need_optional_preview: bool,
+    /** Prevents reading frames at all when set to true, which means the length of DecodeProgress::frames becomes 0 */
     pub no_full_frame: bool,
+    /** Reads frame header without pixels when set to true */
+    pub no_full_image: bool,
 
     /** Specify if you want to stop on the first frame decode */
     pub stop_on_frame: bool,

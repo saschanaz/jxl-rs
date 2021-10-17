@@ -83,6 +83,20 @@ fn test_decode_no_frame() {
 }
 
 #[test]
+fn test_decode_no_full_image() {
+    let data = get_sample_animation();
+
+    let mut decoder = Decoder::default();
+    decoder.no_full_image = true;
+
+    let result = decoder
+        .decode(&data)
+        .expect("Failed to decode the sample image");
+    assert_eq!(result.frames.len(), 25);
+    assert_eq!(result.frames[0].data.len(), 0);
+}
+
+#[test]
 fn test_decode_color_profile() {
     let data = get_sample_image();
 
