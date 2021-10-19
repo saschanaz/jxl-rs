@@ -13,6 +13,7 @@ pub enum JxlDecodeError {
     AllocationFailed,
     InputNotComplete,
     AlreadyFinished,
+    General,
 }
 
 macro_rules! try_dec_fatal {
@@ -207,8 +208,8 @@ fn decode_loop(
                 break;
             }
 
-            JXL_DEC_ERROR => panic!("Decoder reported an unexpected error during processing"),
-            _ => panic!("Unknown JXL decoding status found: {}", status),
+            JXL_DEC_ERROR => return Err(JxlDecodeError::General),
+            _ => panic!("Unexpected JXL decoding status found: {}", status),
         }
     }
 
