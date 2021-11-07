@@ -8,7 +8,7 @@ on:
 # Conditional runs
 # https://stackoverflow.com/a/61832535/2460034
 jobs:
-  update-webref:
+  update-libjxl:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
