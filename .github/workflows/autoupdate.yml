@@ -38,7 +38,13 @@ jobs:
         with:
           command: test
 
+      - name: Version bump
+        run: |
+          cargo install cargo-release
+          cargo release patch
+
       - uses: peter-evans/create-pull-request@v3
         with:
           title: "Update libjxl to ${{ env.LIBJXL_COMMIT_HASH }}"
           branch: update-libjxl
+          token: ${{ secrets.GH_TOKEN }}
