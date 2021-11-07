@@ -1,0 +1,44 @@
+name: Update libjxl
+on:
+  workflow_dispatch: null
+  schedule:
+    # https://crontab.guru/#0_0_1_*_*
+    - cron: "0 0 1 * *"
+
+# Conditional runs
+# https://stackoverflow.com/a/61832535/2460034
+jobs:
+  update-webref:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - run: |
+          git fetch && git checkout origin/main~0
+          echo "LIBJXL_COMMIT_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
+        working-directory: ./libjxl-src/submodules/libjxl
+
+      - run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          git commit -m "Update libjxl to ${{ env.LIBJXL_COMMIT_HASH }}"
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+
+      - uses: peter-evans/create-pull-request@v3
+        with:
+          title: "Update libjxl to ${{ env.LIBJXL_COMMIT_HASH }}"
+          branch: update-libjxl
