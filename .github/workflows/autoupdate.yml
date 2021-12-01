@@ -17,6 +17,7 @@ jobs:
 
       - run: |
           git fetch && git checkout origin/main~0
+          git submodule update --recursive
           echo "LIBJXL_COMMIT_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
         working-directory: ./libjxl-src/submodules/libjxl
 
