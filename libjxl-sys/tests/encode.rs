@@ -71,6 +71,7 @@ unsafe fn encode_oneshot(
         info.xsize = xsize as _;
         info.ysize = ysize as _;
         info.alpha_bits = 8;
+        info.num_extra_channels = 1;
         info.uses_original_profile = true as _;
         info
     };
@@ -107,6 +108,8 @@ unsafe fn encode_oneshot(
         JxlEncoderDestroy(enc);
         return Err("JxlEncoderAddImageFrame failed");
     }
+
+    JxlEncoderCloseInput(enc);
 
     let result = encode_loop(enc);
 

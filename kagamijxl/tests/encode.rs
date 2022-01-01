@@ -98,6 +98,7 @@ fn test_encode_jpeg_frame() {
     encoder.basic_info.xsize = 800;
     encoder.basic_info.ysize = 533;
     encoder.basic_info.alpha_bits = 0; // TODO: this must be implied
+    encoder.basic_info.num_extra_channels = 0; // TODO: this must be implied
 
     let frame = JpegFrame {
         data: &get_sample_jpeg()[..],

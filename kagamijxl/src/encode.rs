@@ -94,6 +94,8 @@ fn prepare_encoder(
         }
     }
 
+    unsafe { JxlEncoderCloseInput(enc_raw) };
+
     Ok(())
 }
 
@@ -172,7 +174,7 @@ impl Encoder {
     fn create_options(
         &self,
         enc_raw: *mut JxlEncoderStruct,
-    ) -> Result<*mut JxlEncoderOptionsStruct, JxlEncodeError> {
+    ) -> Result<*mut JxlEncoderFrameSettings, JxlEncodeError> {
         let options = unsafe { JxlEncoderOptionsCreate(enc_raw, std::ptr::null()) };
 
         if let Some(lossless) = self.lossless {
@@ -214,6 +216,7 @@ impl Default for Encoder {
             JxlEncoderInitBasicInfo(&mut basic_info);
         }
         basic_info.alpha_bits = 8;
+        basic_info.num_extra_channels = 1;
         basic_info.uses_original_profile = true as _;
 
         Self {
