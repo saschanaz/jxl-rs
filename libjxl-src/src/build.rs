@@ -22,5 +22,6 @@ pub fn build() {
         .define("JPEGXL_STATIC", "ON")
         .define("BUILD_TESTING", "OFF")
         .define("JPEGXL_ENABLE_EXAMPLES", "OFF")
+        .define("JPEGXL_ENABLE_TOOLS", "OFF")
         .build();
 }
