@@ -156,8 +156,7 @@ fn decode_loop(
 ) -> Result<(), JxlDecodeError> {
     let dec = progress.raw.decoder;
 
-    let mut buffer =
-        ContiguousBuffer::new(progress.unread_buffer.take().unwrap_or_else(Vec::new), data);
+    let mut buffer = ContiguousBuffer::new(progress.unread_buffer.take().unwrap_or_default(), data);
 
     try_dec_fatal!(JxlDecoderSetInput(dec, buffer.as_ptr(), buffer.len()));
 
