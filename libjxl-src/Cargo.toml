@@ -33,10 +33,10 @@ exclude = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cmake = "0.1.45"
+cmake = "0.1.48"
 
 [build-dependencies]
-cmake = "0.1.45"
+cmake = "0.1.48"
 
 [features]
 default = ["instant-build"]
