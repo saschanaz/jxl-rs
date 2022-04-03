@@ -1,6 +1,6 @@
 [package]
 name = "libjxl-src"
-version = "0.7.3"
+version = "0.7.4"
 authors = ["Kagami Sascha Rosylight <saschanaz@outlook.com>"]
 license = "ISC"
 keywords = ["libjxl", "jxl", "jpegxl"]
