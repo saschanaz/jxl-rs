@@ -142,9 +142,11 @@ fn test_decode_animation() {
 
     let result = decode_memory(&data).expect("Failed to decode the sample image");
     assert_eq!(result.frames.len(), 25);
-    for frame in result.frames {
+    for frame in &result.frames {
         assert_ne!(frame.data.len(), 0);
+        assert_ne!(frame.data[0], 0);
     }
+    assert!(result.frames[24].is_last);
 }
 
 #[test]
